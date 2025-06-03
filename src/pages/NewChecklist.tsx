@@ -6,11 +6,11 @@ import {
   TextField,
   Button,
   Box,
-  Paper,
+  Paper
 } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
+import { storageService } from '../services/storageService';
 import type { Checklist } from '../types/Checklist';
-import { saveChecklist } from '../services/storageService';
 
 export default function NewChecklist() {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ export default function NewChecklist() {
       updatedAt: new Date().toISOString(),
     };
 
-    saveChecklist(newChecklist);
+    storageService.saveChecklist(newChecklist);
     navigate(`/checklist/${newChecklist.id}`);
   };
 

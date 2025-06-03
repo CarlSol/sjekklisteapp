@@ -1,69 +1,53 @@
 import type { Checklist } from '../types/Checklist';
 
-const STORAGE_PREFIX = 'sjekkliste_';
+const STORAGE_KEY = 'sjekklisteapp_checklists';
 
-export function saveChecklist(checklist: Checklist): void {
-  try {
-    localStorage.setItem(
-      `${STORAGE_PREFIX}${checklist.id}`,
-      JSON.stringify(checklist)
-    );
-  } catch (error) {
-    console.error('Feil ved lagring av sjekkliste:', error);
-    throw error;
+export class StorageService {
+  private static instance: StorageService;
+  private storage: Storage;
+
+  private constructor() {
+    this.storage = window.localStorage;
   }
-}
 
-export function getChecklist(id: string): Checklist | null {
-  try {
-    const data = localStorage.getItem(`${STORAGE_PREFIX}${id}`);
-    return data ? JSON.parse(data) : null;
-  } catch (error) {
-    console.error('Feil ved henting av sjekkliste:', error);
-    return null;
-  }
-}
-
-export function getAllChecklists(): Checklist[] {
-  try {
-    const checklists: Checklist[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(STORAGE_PREFIX)) {
-        const data = localStorage.getItem(key);
-        if (data) {
-          checklists.push(JSON.parse(data));
-        }
-      }
+  public static getInstance(): StorageService {
+    if (!StorageService.instance) {
+      StorageService.instance = new StorageService();
     }
-    return checklists;
-  } catch (error) {
-    console.error('Feil ved henting av alle sjekklister:', error);
-    return [];
+    return StorageService.instance;
   }
-}
 
-export function deleteChecklist(id: string): void {
-  try {
-    localStorage.removeItem(`${STORAGE_PREFIX}${id}`);
-  } catch (error) {
-    console.error('Feil ved sletting av sjekkliste:', error);
-    throw error;
-  }
-}
-
-export function clearAllChecklists(): void {
-  try {
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith(STORAGE_PREFIX)) {
-        keysToRemove.push(key);
-      }
+  public saveChecklist(checklist: Checklist): void {
+    const checklists = this.getAllChecklists();
+    const existingIndex = checklists.findIndex(c => c.id === checklist.id);
+    
+    if (existingIndex >= 0) {
+      checklists[existingIndex] = checklist;
+    } else {
+      checklists.push(checklist);
     }
-    keysToRemove.forEach((key) => localStorage.removeItem(key));
-  } catch (error) {
-    console.error('Feil ved sletting av alle sjekklister:', error);
-    throw error;
+
+    this.storage.setItem(STORAGE_KEY, JSON.stringify(checklists));
   }
-} 
+
+  public getAllChecklists(): Checklist[] {
+    const data = this.storage.getItem(STORAGE_KEY);
+    return data ? JSON.parse(data) : [];
+  }
+
+  public getChecklistById(id: string): Checklist | null {
+    const checklists = this.getAllChecklists();
+    return checklists.find(c => c.id === id) || null;
+  }
+
+  public deleteChecklist(id: string): void {
+    const checklists = this.getAllChecklists().filter(c => c.id !== id);
+    this.storage.setItem(STORAGE_KEY, JSON.stringify(checklists));
+  }
+
+  public clearAllChecklists(): void {
+    this.storage.removeItem(STORAGE_KEY);
+  }
+}
+
+export const storageService = StorageService.getInstance(); 

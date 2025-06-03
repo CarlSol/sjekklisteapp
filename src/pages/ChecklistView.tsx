@@ -24,15 +24,16 @@ import {
   Card,
   CardMedia,
   Tooltip,
+  Snackbar,
+  Alert
 } from '@mui/material';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import { PhotoCamera, Email as EmailIcon } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import EmailIcon from '@mui/icons-material/Email';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
-import { getChecklist, saveChecklist } from '../services/storageService';
-import { sendChecklistReport } from '../services/emailService';
+import { storageService } from '../services/storageService';
+import { sendChecklistEmail, generateEmailContent } from '../services/emailService';
 
 // Standard sjekkpunkter (kopiert fra branch eb04470)
 const CHECKLIST_ITEMS: ChecklistItem[] = [
@@ -485,6 +486,12 @@ export default function ChecklistView() {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const initializePermissions = async () => {
     // Be om geolokasjonstillatelse
@@ -533,7 +540,7 @@ export default function ChecklistView() {
 
   useEffect(() => {
     if (id) {
-      const loadedChecklist = getChecklist(id);
+      const loadedChecklist = storageService.getChecklistById(id);
       if (loadedChecklist) {
         setChecklist(loadedChecklist);
       } else {
@@ -552,7 +559,7 @@ export default function ChecklistView() {
           updatedAt: new Date().toISOString()
         };
         setChecklist(newChecklist);
-        saveChecklist(newChecklist);
+        storageService.saveChecklist(newChecklist);
       }
     }
   }, [id, navigate]);
@@ -612,7 +619,6 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      saveChecklist(updatedChecklist);
     }
   };
 
@@ -634,7 +640,6 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      saveChecklist(updatedChecklist);
     }
   };
 
@@ -658,7 +663,6 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      saveChecklist(updatedChecklist);
     }
   };
 
@@ -706,7 +710,6 @@ export default function ChecklistView() {
             };
 
             setChecklist(updatedChecklist);
-            saveChecklist(updatedChecklist);
             setShowCamera(false);
           };
           reader.readAsDataURL(file);
@@ -749,24 +752,39 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      saveChecklist(updatedChecklist);
     }
   };
 
-  const handleSendReport = async () => {
+  const handleSave = () => {
     if (checklist) {
-      try {
-        await sendChecklistReport(checklist);
-        const updatedChecklist: Checklist = {
-          ...checklist,
-          status: 'sent',
-          updatedAt: new Date().toISOString(),
-        };
-        setChecklist(updatedChecklist);
-        saveChecklist(updatedChecklist);
-      } catch (error) {
-        console.error('Error sending report:', error);
-      }
+      storageService.saveChecklist(checklist);
+      setSnackbar({
+        open: true,
+        message: 'Sjekkliste lagret',
+        severity: 'success'
+      });
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!checklist) return;
+
+    try {
+      setIsSendingEmail(true);
+      const { text, html } = generateEmailContent(checklist.items);
+      await sendChecklistEmail({
+        to: '',
+        subject: `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`,
+        text,
+        html,
+        checklistItems: checklist.items
+      });
+      alert('E-post sendt!');
+    } catch (error) {
+      console.error('Feil ved sending av e-post:', error);
+      alert('Kunne ikke sende e-post. Vennligst prøv igjen senere.');
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 
@@ -785,17 +803,26 @@ export default function ChecklistView() {
         <Typography variant="h4" component="h1">
           Sjekkliste - Område {checklist.areaNumber}
         </Typography>
-        {allItemsAnswered && (
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 2 }}>
           <Button
-            variant="contained"
+            variant="outlined"
             color="primary"
-            startIcon={<EmailIcon />}
-            onClick={handleSendReport}
-            sx={{ ml: 'auto' }}
+            onClick={handleSave}
           >
-            Send Rapport
+            Lagre
           </Button>
-        )}
+          {allItemsAnswered && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<EmailIcon />}
+              onClick={handleSendEmail}
+              disabled={isSendingEmail}
+            >
+              {isSendingEmail ? 'Sender...' : 'Send E-post'}
+            </Button>
+          )}
+        </Box>
       </Box>
 
       <Paper sx={{ p: 3, mb: 3 }}>
@@ -976,7 +1003,7 @@ export default function ChecklistView() {
               <Box sx={{ mb: 2 }}>
                 <Button
                   variant="outlined"
-                  startIcon={<PhotoCameraIcon />}
+                  startIcon={<PhotoCamera />}
                   onClick={() => setShowCamera(true)}
                   disabled={!selectedItem?.status}
                 >
@@ -1041,6 +1068,20 @@ export default function ChecklistView() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity as 'success' | 'error'}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 } 

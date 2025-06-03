@@ -1,35 +1,89 @@
-import type { Checklist } from '../types/Checklist';
+import type { ChecklistItem } from '../types/Checklist';
+import { format } from 'date-fns';
+import { nb } from 'date-fns/locale';
+import sgMail from '@sendgrid/mail';
 
-const RECIPIENT_EMAIL = 'carl@solcellespesialisten.no';
+// Konfigurasjon for SendGrid
+const SENDGRID_API_KEY = import.meta.env.VITE_SENDGRID_API_KEY;
+const EMAIL_FROM = import.meta.env.VITE_EMAIL_FROM;
+const EMAIL_TO = import.meta.env.VITE_EMAIL_TO;
 
-export async function sendChecklistReport(checklist: Checklist): Promise<boolean> {
-  try {
-    // TODO: Implementer Gmail API integrasjon
-    // Dette vil kreve:
-    // 1. OAuth2 autentisering med Gmail API
-    // 2. Generering av PDF rapport
-    // 3. Sending av e-post med vedlegg
-
-    // Midlertidig mock-implementasjon
-    console.log('Sender rapport til:', RECIPIENT_EMAIL);
-    console.log('Sjekkliste data:', checklist);
-
-    // Simulerer en vellykket sending
-    return true;
-  } catch (error) {
-    console.error('Feil ved sending av rapport:', error);
-    return false;
-  }
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
 }
 
-export function generateReportPDF(checklist: Checklist): Blob {
-  // TODO: Implementer PDF generering
-  // Dette vil kreve:
-  // 1. Formatering av sjekkliste data
-  // 2. Generering av PDF med bilder og koordinater
-  // 3. Returnere PDF som Blob
+interface EmailData {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  checklistItems: ChecklistItem[];
+}
 
-  // Midlertidig mock-implementasjon
-  const dummyContent = JSON.stringify(checklist, null, 2);
-  return new Blob([dummyContent], { type: 'application/pdf' });
-} 
+export const sendChecklistEmail = async (emailData: EmailData): Promise<void> => {
+  try {
+    if (!SENDGRID_API_KEY) {
+      throw new Error('SendGrid API-nøkkel er ikke konfigurert');
+    }
+
+    const msg = {
+      to: emailData.to || EMAIL_TO,
+      from: EMAIL_FROM,
+      subject: emailData.subject,
+      text: emailData.text,
+      html: emailData.html,
+    };
+
+    await sgMail.send(msg);
+  } catch (error) {
+    console.error('Feil ved sending av e-post:', error);
+    throw new Error('Kunne ikke sende e-post. Vennligst prøv igjen senere.');
+  }
+};
+
+export const generateEmailContent = (checklistItems: ChecklistItem[]): { text: string; html: string } => {
+  const date = format(new Date(), 'dd.MM.yyyy', { locale: nb });
+  const time = format(new Date(), 'HH:mm', { locale: nb });
+
+  const textContent = `
+Sjekkliste - ${date} ${time}
+
+${checklistItems.map(item => `${item.status === 'OK' ? '✓' : '✗'} ${item.checkPoint}`).join('\n')}
+
+Sendt fra SjekklisteApp
+`;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; }
+    .header { margin-bottom: 20px; }
+    .item { margin: 5px 0; }
+    .checked { color: #2e7d32; }
+    .unchecked { color: #c62828; }
+    .footer { margin-top: 20px; font-size: 0.9em; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Sjekkliste - ${date} ${time}</h2>
+  </div>
+  <div class="items">
+    ${checklistItems.map(item => `
+      <div class="item ${item.status === 'OK' ? 'checked' : 'unchecked'}">
+        ${item.status === 'OK' ? '✓' : '✗'} ${item.checkPoint}
+      </div>
+    `).join('')}
+  </div>
+  <div class="footer">
+    <p>Sendt fra SjekklisteApp</p>
+  </div>
+</body>
+</html>
+`;
+
+  return { text: textContent, html: htmlContent };
+}; 

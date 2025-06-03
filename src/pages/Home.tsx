@@ -10,24 +10,17 @@ import {
   Box,
   Fab,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
+import { Add as AddIcon } from '@mui/icons-material';
+import { storageService } from '../services/storageService';
 import type { Checklist } from '../types/Checklist';
-import { getAllChecklists } from '../services/storageService';
 
 export default function Home() {
   const navigate = useNavigate();
   const [checklists, setChecklists] = useState<Checklist[]>([]);
 
   useEffect(() => {
-    const loadChecklists = () => {
-      const savedChecklists = getAllChecklists();
-      setChecklists(savedChecklists);
-    };
-
-    loadChecklists();
-    // Lytte på endringer i localStorage
-    window.addEventListener('storage', loadChecklists);
-    return () => window.removeEventListener('storage', loadChecklists);
+    const savedChecklists = storageService.getAllChecklists();
+    setChecklists(savedChecklists);
   }, []);
 
   const handleNewChecklist = () => {
