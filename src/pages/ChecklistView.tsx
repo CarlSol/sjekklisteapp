@@ -45,7 +45,6 @@ export default function ChecklistView() {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -395,7 +394,6 @@ export default function ChecklistView() {
             variant="outlined"
             color="primary"
             onClick={handleSave}
-            disabled={loading}
           >
             Lagre
           </Button>
