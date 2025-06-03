@@ -840,6 +840,16 @@ export default function ChecklistView() {
       // Generer PDF
       const pdfBlob = await generatePDF(checklist);
       
+      // Last ned PDF-filen
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `sjekkliste_${checklist.solparkName}_område${checklist.areaNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(pdfUrl);
+      
       // Lag e-postinnhold
       const { text } = generateEmailContent(checklist.items);
       const subject = `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`;
@@ -850,7 +860,7 @@ export default function ChecklistView() {
       
       setSnackbar({
         open: true,
-        message: 'E-postklient åpnet. Vennligst legg til PDF-vedlegget manuelt.',
+        message: 'E-postklient åpnet. Vennligst legg til den nedlastede PDF-filen som vedlegg.',
         severity: 'info'
       });
     } catch (error) {
