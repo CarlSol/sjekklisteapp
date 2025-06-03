@@ -20,6 +20,16 @@ export interface EmailData {
   checklistItems: ChecklistItem[];
 }
 
+// Hjelpefunksjon for å laste inn bilder
+const loadImage = (base64Image: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = base64Image;
+  });
+};
+
 export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
   try {
     console.log('Starter PDF-generering for sjekkliste:', checklist.id);
@@ -31,37 +41,93 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
 
     // Opprett PDF-dokument
     const doc = new jsPDF();
+    let currentY = 20;
     
     // Tittel
     doc.setFontSize(16);
-    doc.text(`Sjekkliste - ${checklist.solparkName || 'Ukjent solpark'}`, 14, 20);
+    doc.text(`Sjekkliste - ${checklist.solparkName || 'Ukjent solpark'}`, 14, currentY);
+    currentY += 10;
+    
     doc.setFontSize(12);
-    doc.text(`Område ${checklist.areaNumber || 'Ukjent'}`, 14, 30);
+    doc.text(`Område ${checklist.areaNumber || 'Ukjent'}`, 14, currentY);
+    currentY += 10;
     
     // Metadata
     doc.setFontSize(10);
-    doc.text(`Dato: ${new Date().toLocaleDateString('nb-NO')}`, 14, 40);
-    doc.text(`Inspektør: ${checklist.inspectors?.join(', ') || 'Ikke spesifisert'}`, 14, 45);
+    doc.text(`Dato: ${new Date().toLocaleDateString('nb-NO')}`, 14, currentY);
+    currentY += 5;
+    doc.text(`Inspektør: ${checklist.inspectors?.join(', ') || 'Ikke spesifisert'}`, 14, currentY);
+    currentY += 15;
     
-    // Tabell
-    const tableData = checklist.items.map((item: ChecklistItem) => [
-      item.id || '',
-      item.checkPoint || '',
-      item.status || 'Ikke sjekket',
-      item.notes || '',
-      item.timestamp ? new Date(item.timestamp).toLocaleString('nb-NO') : ''
-    ]);
-    
-    // Legg til tabell
-    autoTable(doc, {
-      startY: 50,
-      head: [['ID', 'Sjekkpunkt', 'Status', 'Notater', 'Tidspunkt']],
-      body: tableData,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [41, 128, 185] },
-      margin: { top: 50 }
-    });
+    // Grupper sjekkpunkter etter kategori
+    const groupedItems = checklist.items.reduce((acc, item) => {
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    }, {} as Record<string, ChecklistItem[]>);
+
+    // Gå gjennom hver kategori
+    for (const [category, items] of Object.entries(groupedItems)) {
+      // Legg til kategoritittel
+      doc.setFontSize(12);
+      doc.text(category, 14, currentY);
+      currentY += 10;
+
+      // Legg til tabell for denne kategorien
+      const tableData = items.map((item: ChecklistItem) => [
+        item.id || '',
+        item.checkPoint || '',
+        item.status || 'Ikke sjekket',
+        item.notes || '',
+        item.timestamp ? new Date(item.timestamp).toLocaleString('nb-NO') : ''
+      ]);
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['ID', 'Sjekkpunkt', 'Status', 'Notater', 'Tidspunkt']],
+        body: tableData,
+        theme: 'grid',
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [41, 128, 185] },
+        margin: { top: 10 }
+      });
+
+      currentY = (doc as any).lastAutoTable.finalY + 10;
+
+      // Legg til bilder for hvert sjekkpunkt
+      for (const item of items) {
+        if (item.imageRefs && item.imageRefs.length > 0) {
+          doc.setFontSize(10);
+          doc.text(`Bilder for ${item.id}:`, 14, currentY);
+          currentY += 5;
+
+          for (const imageRef of item.imageRefs) {
+            try {
+              const img = await loadImage(imageRef);
+              const imgWidth = 100;
+              const imgHeight = (img.height * imgWidth) / img.width;
+
+              // Sjekk om vi trenger ny side
+              if (currentY + imgHeight > doc.internal.pageSize.height - 20) {
+                doc.addPage();
+                currentY = 20;
+              }
+
+              doc.addImage(img, 'JPEG', 14, currentY, imgWidth, imgHeight);
+              currentY += imgHeight + 10;
+            } catch (error) {
+              console.error('Feil ved lasting av bilde:', error);
+            }
+          }
+        }
+      }
+
+      // Legg til ny side mellom kategorier
+      doc.addPage();
+      currentY = 20;
+    }
     
     // Konverter til Blob
     const pdfOutput = doc.output('blob');

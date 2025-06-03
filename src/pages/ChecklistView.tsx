@@ -846,27 +846,33 @@ export default function ChecklistView() {
         throw new Error('PDF-generering feilet: Tomt dokument');
       }
       
-      // Last ned PDF-filen
-      console.log('Starter PDF-nedlasting...');
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = `sjekkliste_${checklist.solparkName}_område${checklist.areaNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(pdfUrl);
-      console.log('PDF nedlastet');
-      
       // Lag e-postinnhold
       console.log('Genererer e-postinnhold...');
       const { text } = generateEmailContent(checklist.items);
       const subject = `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`;
       
-      // Åpne standard e-postklient
-      console.log('Åpner e-postklient...');
-      const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+      // Lag en midlertidig URL for PDF-filen
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      
+      // Opprett et midlertidig a-element for nedlasting
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = `sjekkliste_${checklist.solparkName}_område${checklist.areaNumber}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      // Legg til elementet i DOM, klikk på det, og fjern det
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Åpne standard e-postklient med instruksjoner
+      const emailBody = `${text}\n\nVedlagt finner du PDF-rapporten med bilder. Vennligst legg til den nedlastede PDF-filen som vedlegg.`;
+      const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
       window.open(mailtoLink, '_blank');
+      
+      // Frigjør URL-en etter en kort forsinkelse
+      setTimeout(() => {
+        URL.revokeObjectURL(pdfUrl);
+      }, 1000);
       
       setSnackbar({
         open: true,
