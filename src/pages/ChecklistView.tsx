@@ -481,7 +481,6 @@ export default function ChecklistView() {
   const [selectedItem, setSelectedItem] = useState<ChecklistItem | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showCamera, setShowCamera] = useState(false);
   const [videoRef, setVideoRef] = useState<HTMLVideoElement | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
