@@ -540,43 +540,44 @@ export default function ChecklistView() {
   }, []);
 
   useEffect(() => {
-    if (id) {
-      console.log('ID:', id);
-      console.log('CHECKLIST_ITEMS:', CHECKLIST_ITEMS);
-      const loadedChecklist = storageService.getChecklistById(id);
-      console.log('Loaded checklist:', loadedChecklist);
-      
-      // Hvis ingen sjekkliste finnes, eller hvis den eksisterende sjekklisten har tom items-array
-      if (!loadedChecklist || !loadedChecklist.items || loadedChecklist.items.length === 0) {
-        console.log('Creating new checklist with items');
-        const newChecklist: Checklist = {
-          id,
-          solparkName: loadedChecklist?.solparkName || '',
-          areaNumber: loadedChecklist?.areaNumber || 0,
-          inspectionDate: loadedChecklist?.inspectionDate || new Date().toISOString(),
-          inspectors: loadedChecklist?.inspectors || [],
-          weatherConditions: loadedChecklist?.weatherConditions || '',
-          generalCondition: loadedChecklist?.generalCondition || '',
-          items: CHECKLIST_ITEMS.map(item => ({
-            ...item,
-            timestamp: new Date().toISOString(),
-            status: null,
-            notes: '',
-            imageRefs: [],
-            inspector: ''
-          })),
-          status: 'draft',
-          createdAt: loadedChecklist?.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        console.log('New checklist created:', newChecklist);
-        setChecklist(newChecklist);
-        storageService.saveChecklist(newChecklist);
-      } else {
-        setChecklist(loadedChecklist);
+    const loadChecklist = async () => {
+      if (!id) return;
+      try {
+        const loadedChecklist = await storageService.getChecklistById(id);
+        if (loadedChecklist) {
+          setChecklist(loadedChecklist);
+        } else {
+          console.error('Fant ikke sjekkliste med ID:', id);
+          // Opprett ny sjekkliste hvis ingen finnes
+          const newChecklist: Checklist = {
+            id,
+            solparkName: '',
+            areaNumber: 0,
+            inspectionDate: new Date().toISOString(),
+            inspectors: [],
+            weatherConditions: '',
+            generalCondition: '',
+            items: CHECKLIST_ITEMS.map(item => ({
+              ...item,
+              timestamp: new Date().toISOString(),
+              status: null,
+              notes: '',
+              imageRefs: [],
+              inspector: ''
+            })),
+            status: 'draft',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          setChecklist(newChecklist);
+          await storageService.saveChecklist(newChecklist);
+        }
+      } catch (error) {
+        console.error('Feil ved lasting av sjekkliste:', error);
       }
-    }
-  }, [id, navigate]);
+    };
+    loadChecklist();
+  }, [id]);
 
   const handleItemClick = async (item: ChecklistItem) => {
     setSelectedItem(item);
@@ -990,6 +991,28 @@ export default function ChecklistView() {
   };
 
   const allItemsAnswered = checklist?.items.every(item => item.status !== null);
+
+  const handleSave = async () => {
+    if (!checklist) return;
+    try {
+      await storageService.saveChecklist(checklist);
+      setSnackbar({ open: true, message: 'Sjekkliste lagret', severity: 'success' });
+    } catch (error) {
+      console.error('Feil ved lagring av sjekkliste:', error);
+      setSnackbar({ open: true, message: 'Feil ved lagring av sjekkliste', severity: 'error' });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!checklist) return;
+    try {
+      await storageService.deleteChecklist(checklist.id);
+      navigate('/');
+    } catch (error) {
+      console.error('Feil ved sletting av sjekkliste:', error);
+      setSnackbar({ open: true, message: 'Feil ved sletting av sjekkliste', severity: 'error' });
+    }
+  };
 
   if (!checklist) {
     return null;
