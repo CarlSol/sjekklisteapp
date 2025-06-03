@@ -651,26 +651,6 @@ export default function ChecklistView() {
     }
   };
 
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        } 
-      });
-      if (videoRef) {
-        videoRef.srcObject = stream;
-        await videoRef.play();
-      }
-      setCameraError(null);
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
-    }
-  };
-
   const handleImageCapture = async () => {
     if (!videoRef || !videoRef.srcObject) return;
 
@@ -719,6 +699,7 @@ export default function ChecklistView() {
     }
   };
 
+  // Oppdater useEffect for kamera
   useEffect(() => {
     let stream: MediaStream | null = null;
 
