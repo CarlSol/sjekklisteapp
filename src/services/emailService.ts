@@ -1,7 +1,7 @@
 import sgMail from '@sendgrid/mail';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 // Konfigurasjon for SendGrid
 const SENDGRID_API_KEY = import.meta.env.VITE_SENDGRID_API_KEY;
@@ -53,7 +53,7 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
     ]);
     
     // Legg til tabell
-    (doc as any).autoTable({
+    autoTable(doc, {
       startY: 50,
       head: [['ID', 'Sjekkpunkt', 'Status', 'Notater', 'Tidspunkt']],
       body: tableData,
