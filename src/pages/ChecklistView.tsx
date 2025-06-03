@@ -34,6 +34,7 @@ import type { Checklist, ChecklistItem } from '../types/Checklist';
 import { getChecklist, saveChecklist } from '../services/storageService';
 import { sendChecklistReport } from '../services/emailService';
 
+// Standard sjekkpunkter (kopiert fra branch eb04470)
 const CHECKLIST_ITEMS: ChecklistItem[] = [
   // 1. Gjerder og Porter
   {
@@ -534,13 +535,24 @@ export default function ChecklistView() {
     if (id) {
       const loadedChecklist = getChecklist(id);
       if (loadedChecklist) {
-        // Legg til sjekklistepunkter hvis listen er tom
-        if (loadedChecklist.items.length === 0) {
-          loadedChecklist.items = CHECKLIST_ITEMS;
-        }
         setChecklist(loadedChecklist);
       } else {
-        navigate('/');
+        // Hvis ingen sjekkliste finnes, opprett en ny med alle standardpunkter
+        const newChecklist: Checklist = {
+          id,
+          solparkName: '',
+          areaNumber: 0,
+          inspectionDate: new Date().toISOString(),
+          inspectors: [],
+          weatherConditions: '',
+          generalCondition: '',
+          items: CHECKLIST_ITEMS.map(item => ({ ...item, timestamp: new Date().toISOString() })),
+          status: 'draft',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setChecklist(newChecklist);
+        saveChecklist(newChecklist);
       }
     }
   }, [id, navigate]);
