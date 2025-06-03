@@ -33,7 +33,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
 import { storageService } from '../services/storageService';
-import { sendChecklistEmail, generateEmailContent, generatePDF } from '../services/emailService';
+import { generateEmailContent, generatePDF } from '../services/emailService';
 
 // Standard sjekkpunkter (kopiert fra branch eb04470)
 const CHECKLIST_ITEMS: ChecklistItem[] = [
@@ -839,10 +839,9 @@ export default function ChecklistView() {
       
       // Generer PDF
       const pdfBlob = await generatePDF(checklist);
-      const pdfUrl = URL.createObjectURL(pdfBlob);
       
       // Lag e-postinnhold
-      const { text, html } = generateEmailContent(checklist.items);
+      const { text } = generateEmailContent(checklist.items);
       const subject = `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`;
       
       // Åpne standard e-postklient
