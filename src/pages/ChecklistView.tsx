@@ -724,32 +724,50 @@ export default function ChecklistView() {
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0];
         if (file && selectedItem && checklist) {
-          // Konverter bildet til base64
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            const imageData = event.target?.result as string;
-            
-            const updatedItem = {
-              ...selectedItem,
-              imageRefs: [...selectedItem.imageRefs, imageData],
+          try {
+            // Konverter bildet til base64
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              const imageData = event.target?.result as string;
+              
+              // Opprett et midlertidig bilde for å validere at bildet er gyldig
+              const img = new Image();
+              img.onload = () => {
+                const updatedItem = {
+                  ...selectedItem,
+                  imageRefs: [...selectedItem.imageRefs, imageData],
+                };
+
+                setSelectedItem(updatedItem);
+
+                const updatedItems = checklist.items.map((item) =>
+                  item.id === selectedItem.id ? updatedItem : item
+                );
+
+                const updatedChecklist = {
+                  ...checklist,
+                  items: updatedItems,
+                  updatedAt: new Date().toISOString(),
+                };
+
+                setChecklist(updatedChecklist);
+                setShowCamera(false);
+              };
+              img.onerror = () => {
+                console.error('Feil ved lasting av bilde');
+                setShowCamera(false);
+              };
+              img.src = imageData;
             };
-
-            setSelectedItem(updatedItem);
-
-            const updatedItems = checklist.items.map((item) =>
-              item.id === selectedItem.id ? updatedItem : item
-            );
-
-            const updatedChecklist = {
-              ...checklist,
-              items: updatedItems,
-              updatedAt: new Date().toISOString(),
+            reader.onerror = () => {
+              console.error('Feil ved lesing av fil');
+              setShowCamera(false);
             };
-
-            setChecklist(updatedChecklist);
+            reader.readAsDataURL(file);
+          } catch (error) {
+            console.error('Feil ved prosessering av bilde:', error);
             setShowCamera(false);
-          };
-          reader.readAsDataURL(file);
+          }
         } else {
           // Hvis brukeren avbryter eller ingen fil er valgt
           setShowCamera(false);
