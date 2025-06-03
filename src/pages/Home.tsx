@@ -19,8 +19,15 @@ export default function Home() {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
 
   useEffect(() => {
-    const savedChecklists = storageService.getAllChecklists();
-    setChecklists(savedChecklists);
+    const loadChecklists = async () => {
+      try {
+        const loadedChecklists = await storageService.getAllChecklists();
+        setChecklists(loadedChecklists);
+      } catch (error) {
+        console.error('Feil ved lasting av sjekklister:', error);
+      }
+    };
+    loadChecklists();
   }, []);
 
   const handleNewChecklist = () => {
