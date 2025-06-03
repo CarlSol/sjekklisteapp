@@ -658,9 +658,17 @@ export default function ChecklistView() {
 
   const handleAddItem = (item: ChecklistItem) => {
     if (checklist) {
+      // Finn alle eksisterende punkter med samme base-id
+      const baseId = item.id.split('-')[0];
+      const existingItems = checklist.items.filter(i => i.id.startsWith(baseId));
+      
+      // Generer nytt nummer for det nye punktet
+      const newNumber = existingItems.length + 1;
+      
       const newItem = {
         ...item,
-        id: `${item.id}-${Date.now()}`,
+        id: `${baseId}-${newNumber}`,
+        checkPoint: `${item.checkPoint} (${newNumber})`,
         status: null,
         notes: '',
         imageRefs: [],
@@ -668,7 +676,16 @@ export default function ChecklistView() {
         inspector: '',
       };
 
-      const updatedItems = [...checklist.items, newItem];
+      // Finn indeksen til det valgte punktet
+      const currentIndex = checklist.items.findIndex(i => i.id === item.id);
+      
+      // Legg til det nye punktet rett etter det valgte
+      const updatedItems = [
+        ...checklist.items.slice(0, currentIndex + 1),
+        newItem,
+        ...checklist.items.slice(currentIndex + 1)
+      ];
+
       const updatedChecklist = {
         ...checklist,
         items: updatedItems,
@@ -677,6 +694,13 @@ export default function ChecklistView() {
 
       setChecklist(updatedChecklist);
     }
+  };
+
+  // Hjelpefunksjon for å sjekke om et punkt er det siste av sin type
+  const isLastOfType = (item: ChecklistItem) => {
+    const baseId = item.id.split('-')[0];
+    const itemsOfType = checklist?.items.filter(i => i.id.startsWith(baseId)) || [];
+    return itemsOfType[itemsOfType.length - 1]?.id === item.id;
   };
 
   const handleImageCapture = async () => {
@@ -940,17 +964,19 @@ export default function ChecklistView() {
                   }
                 />
                 <Box>
-                  <Tooltip title="Legg til ny">
-                    <IconButton
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAddItem(item);
-                      }}
-                      size="small"
-                    >
-                      <AddIcon />
-                    </IconButton>
-                  </Tooltip>
+                  {isLastOfType(item) && (
+                    <Tooltip title="Legg til ny">
+                      <IconButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddItem(item);
+                        }}
+                        size="small"
+                      >
+                        <AddIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                 </Box>
               </Box>
             </ListItem>
