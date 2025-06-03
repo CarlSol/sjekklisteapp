@@ -33,7 +33,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
 import { storageService } from '../services/storageService';
-import { sendChecklistReport } from '../services/emailService';
+import { sendChecklistEmail, generateEmailContent } from '../services/emailService';
 
 export default function ChecklistView() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +51,7 @@ export default function ChecklistView() {
     message: '',
     severity: 'success'
   });
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const initializePermissions = async () => {
     // Be om geolokasjonstillatelse
@@ -352,43 +353,25 @@ export default function ChecklistView() {
     }
   };
 
-  const handleSendReport = async () => {
+  const handleSendEmail = async () => {
     if (!checklist) return;
 
     try {
-      setLoading(true);
-      const success = await sendChecklistReport(checklist);
-      
-      if (success) {
-        // Oppdater status til 'sent' og lagre
-        const updatedChecklist = {
-          ...checklist,
-          status: 'sent' as const
-        };
-        setChecklist(updatedChecklist);
-        storageService.saveChecklist(updatedChecklist);
-        
-        setSnackbar({
-          open: true,
-          message: 'Rapport sendt',
-          severity: 'success'
-        });
-      } else {
-        setSnackbar({
-          open: true,
-          message: 'Kunne ikke sende rapport',
-          severity: 'error'
-        });
-      }
-    } catch (error) {
-      console.error('Feil ved sending av rapport:', error);
-      setSnackbar({
-        open: true,
-        message: 'Kunne ikke sende rapport',
-        severity: 'error'
+      setIsSendingEmail(true);
+      const { text, html } = generateEmailContent(checklist.items);
+      await sendChecklistEmail({
+        to: '',
+        subject: `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`,
+        text,
+        html,
+        checklistItems: checklist.items
       });
+      alert('E-post sendt!');
+    } catch (error) {
+      console.error('Feil ved sending av e-post:', error);
+      alert('Kunne ikke sende e-post. Vennligst prøv igjen senere.');
     } finally {
-      setLoading(false);
+      setIsSendingEmail(false);
     }
   };
 
@@ -421,10 +404,10 @@ export default function ChecklistView() {
               variant="contained"
               color="primary"
               startIcon={<EmailIcon />}
-              onClick={handleSendReport}
-              disabled={loading}
+              onClick={handleSendEmail}
+              disabled={isSendingEmail}
             >
-              {loading ? 'Sender...' : 'Send Rapport'}
+              {isSendingEmail ? 'Sender...' : 'Send E-post'}
             </Button>
           )}
         </Box>
