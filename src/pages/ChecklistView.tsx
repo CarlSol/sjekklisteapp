@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -9,6 +9,7 @@ import {
   List,
   ListItem,
   ListItemText,
+  ListItemSecondaryAction,
   IconButton,
   Dialog,
   DialogTitle,
@@ -24,14 +25,16 @@ import {
   Card,
   CardMedia,
   Tooltip,
+  Snackbar,
+  Alert,
+  CircularProgress
 } from '@mui/material';
-import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import { PhotoCamera, LocationOn, Email as EmailIcon } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import EmailIcon from '@mui/icons-material/Email';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
-import { getChecklist, saveChecklist } from '../services/storageService';
+import { storageService } from '../services/storageService';
 import { sendChecklistReport } from '../services/emailService';
 
 const CHECKLIST_ITEMS: ChecklistItem[] = [
@@ -484,6 +487,12 @@ export default function ChecklistView() {
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
   const initializePermissions = async () => {
     // Be om geolokasjonstillatelse
@@ -532,18 +541,63 @@ export default function ChecklistView() {
 
   useEffect(() => {
     if (id) {
-      const loadedChecklist = getChecklist(id);
+      const loadedChecklist = storageService.getChecklistById(id);
       if (loadedChecklist) {
         // Legg til sjekklistepunkter hvis listen er tom
         if (loadedChecklist.items.length === 0) {
-          loadedChecklist.items = CHECKLIST_ITEMS;
+          loadedChecklist.items = [
+            {
+              id: '1',
+              category: 'Generelt',
+              checkPoint: 'Sjekk generell tilstand',
+              frequency: 'Daglig',
+              status: null,
+              notes: '',
+              imageRefs: [],
+              timestamp: new Date().toISOString(),
+              inspector: ''
+            }
+          ];
         }
         setChecklist(loadedChecklist);
       } else {
-        navigate('/');
+        // Hvis ingen sjekkliste finnes, opprett en ny
+        const newChecklist: Checklist = {
+          id,
+          solparkName: '',
+          areaNumber: 0,
+          inspectionDate: new Date().toISOString(),
+          inspectors: [],
+          weatherConditions: '',
+          generalCondition: '',
+          items: [
+            {
+              id: '1',
+              category: 'Generelt',
+              checkPoint: 'Sjekk generell tilstand',
+              frequency: 'Daglig',
+              status: null,
+              notes: '',
+              imageRefs: [],
+              timestamp: new Date().toISOString(),
+              inspector: ''
+            }
+          ],
+          status: 'draft',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        setChecklist(newChecklist);
       }
     }
   }, [id, navigate]);
+
+  useEffect(() => {
+    if (checklist) {
+      // Lagre sjekkliste automatisk når den endres
+      storageService.saveChecklist(checklist);
+    }
+  }, [checklist]);
 
   const handleItemClick = async (item: ChecklistItem) => {
     setSelectedItem(item);
@@ -600,7 +654,7 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      saveChecklist(updatedChecklist);
+      storageService.saveChecklist(updatedChecklist);
     }
   };
 
@@ -622,7 +676,7 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      saveChecklist(updatedChecklist);
+      storageService.saveChecklist(updatedChecklist);
     }
   };
 
@@ -646,7 +700,7 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      saveChecklist(updatedChecklist);
+      storageService.saveChecklist(updatedChecklist);
     }
   };
 
@@ -694,7 +748,7 @@ export default function ChecklistView() {
             };
 
             setChecklist(updatedChecklist);
-            saveChecklist(updatedChecklist);
+            storageService.saveChecklist(updatedChecklist);
             setShowCamera(false);
           };
           reader.readAsDataURL(file);
@@ -737,24 +791,58 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      saveChecklist(updatedChecklist);
+      storageService.saveChecklist(updatedChecklist);
+    }
+  };
+
+  const handleSave = () => {
+    if (checklist) {
+      storageService.saveChecklist(checklist);
+      setSnackbar({
+        open: true,
+        message: 'Sjekkliste lagret',
+        severity: 'success'
+      });
     }
   };
 
   const handleSendReport = async () => {
-    if (checklist) {
-      try {
-        await sendChecklistReport(checklist);
-        const updatedChecklist: Checklist = {
+    if (!checklist) return;
+
+    try {
+      setLoading(true);
+      const success = await sendChecklistReport(checklist);
+      
+      if (success) {
+        // Oppdater status til 'sent' og lagre
+        const updatedChecklist = {
           ...checklist,
-          status: 'sent',
-          updatedAt: new Date().toISOString(),
+          status: 'sent' as const
         };
         setChecklist(updatedChecklist);
-        saveChecklist(updatedChecklist);
-      } catch (error) {
-        console.error('Error sending report:', error);
+        storageService.saveChecklist(updatedChecklist);
+        
+        setSnackbar({
+          open: true,
+          message: 'Rapport sendt',
+          severity: 'success'
+        });
+      } else {
+        setSnackbar({
+          open: true,
+          message: 'Kunne ikke sende rapport',
+          severity: 'error'
+        });
       }
+    } catch (error) {
+      console.error('Feil ved sending av rapport:', error);
+      setSnackbar({
+        open: true,
+        message: 'Kunne ikke sende rapport',
+        severity: 'error'
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -964,7 +1052,7 @@ export default function ChecklistView() {
               <Box sx={{ mb: 2 }}>
                 <Button
                   variant="outlined"
-                  startIcon={<PhotoCameraIcon />}
+                  startIcon={<PhotoCamera />}
                   onClick={() => setShowCamera(true)}
                   disabled={!selectedItem?.status}
                 >
