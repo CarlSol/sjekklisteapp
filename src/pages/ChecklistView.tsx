@@ -652,87 +652,72 @@ export default function ChecklistView() {
   };
 
   const handleImageCapture = async () => {
-    if (!videoRef || !videoRef.srcObject) return;
-
     try {
-      const canvas = document.createElement('canvas');
-      canvas.width = videoRef.videoWidth;
-      canvas.height = videoRef.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      // Be om tilgang til kameraet
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          facingMode: 'environment',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        } 
+      });
 
-      // Tegn video-feeden på canvas
-      ctx.drawImage(videoRef, 0, 0, canvas.width, canvas.height);
-      
-      // Konverter til JPEG med høy kvalitet
-      const imageData = canvas.toDataURL('image/jpeg', 0.95);
+      // Opprett et input element av type file
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.capture = 'environment'; // Bruk bakkameraet
 
-      if (selectedItem && checklist) {
-        const updatedItem = {
-          ...selectedItem,
-          imageRefs: [...selectedItem.imageRefs, imageData],
-        };
+      // Håndter når brukeren har valgt et bilde
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (file && selectedItem && checklist) {
+          // Konverter bildet til base64
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const imageData = event.target?.result as string;
+            
+            const updatedItem = {
+              ...selectedItem,
+              imageRefs: [...selectedItem.imageRefs, imageData],
+            };
 
-        setSelectedItem(updatedItem);
+            setSelectedItem(updatedItem);
 
-        const updatedItems = checklist.items.map((item) =>
-          item.id === selectedItem.id ? updatedItem : item
-        );
+            const updatedItems = checklist.items.map((item) =>
+              item.id === selectedItem.id ? updatedItem : item
+            );
 
-        const updatedChecklist = {
-          ...checklist,
-          items: updatedItems,
-          updatedAt: new Date().toISOString(),
-        };
+            const updatedChecklist = {
+              ...checklist,
+              items: updatedItems,
+              updatedAt: new Date().toISOString(),
+            };
 
-        setChecklist(updatedChecklist);
-        saveChecklist(updatedChecklist);
-        
-        // Stopp kamera-strømmen
-        const stream = videoRef.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        setShowCamera(false);
-      }
+            setChecklist(updatedChecklist);
+            saveChecklist(updatedChecklist);
+            setShowCamera(false);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      // Åpne kameraet
+      input.click();
+
+      // Stopp strømmen etter at brukeren har valgt et bilde
+      stream.getTracks().forEach(track => track.stop());
     } catch (error) {
-      console.error('Error capturing image:', error);
-      setCameraError('Kunne ikke ta bilde. Prøv igjen.');
+      console.error('Error accessing camera:', error);
+      setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
     }
   };
 
   // Oppdater useEffect for kamera
   useEffect(() => {
-    let stream: MediaStream | null = null;
-
-    const initializeCamera = async () => {
-      if (showCamera) {
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-              facingMode: 'environment',
-              width: { ideal: 1920 },
-              height: { ideal: 1080 }
-            } 
-          });
-          
-          if (videoRef) {
-            videoRef.srcObject = stream;
-            await videoRef.play();
-          }
-          setCameraError(null);
-        } catch (error) {
-          console.error('Error accessing camera:', error);
-          setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
-        }
-      }
-    };
-
-    initializeCamera();
-
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
+    if (showCamera) {
+      handleImageCapture();
+    }
   }, [showCamera]);
 
   const handleDeleteImage = (imageIndex: number) => {
@@ -989,44 +974,11 @@ export default function ChecklistView() {
               </Box>
             )}
 
-            {showCamera && (
+            {showCamera && cameraError && (
               <Box sx={{ mb: 2 }}>
-                {cameraError ? (
-                  <Typography color="error" sx={{ mb: 2 }}>
-                    {cameraError}
-                  </Typography>
-                ) : (
-                  <>
-                    <Box sx={{ 
-                      position: 'relative',
-                      width: '100%',
-                      height: '300px',
-                      backgroundColor: '#000',
-                      borderRadius: '4px',
-                      overflow: 'hidden'
-                    }}>
-                      <video
-                        ref={setVideoRef}
-                        autoPlay
-                        playsInline
-                        style={{ 
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover'
-                        }}
-                      />
-                    </Box>
-                    <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center' }}>
-                      <Button
-                        variant="contained"
-                        onClick={handleImageCapture}
-                        sx={{ mt: 1 }}
-                      >
-                        Ta bilde
-                      </Button>
-                    </Box>
-                  </>
-                )}
+                <Typography color="error" sx={{ mb: 2 }}>
+                  {cameraError}
+                </Typography>
               </Box>
             )}
 
