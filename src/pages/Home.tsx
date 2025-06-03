@@ -55,18 +55,8 @@ export default function Home() {
       status: 'draft',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      weatherConditions: {
-        temperature: 0,
-        windSpeed: 0,
-        precipitation: 'none',
-        cloudCover: 'clear',
-        notes: ''
-      },
-      generalCondition: {
-        snowCover: 'none',
-        iceCover: 'none',
-        notes: ''
-      }
+      weatherConditions: '',
+      generalCondition: ''
     };
 
     try {
