@@ -15,10 +15,6 @@ import {
   DialogActions,
   Button,
   TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { storageService } from '../services/storageService';
@@ -59,6 +55,18 @@ export default function Home() {
       status: 'draft',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      weatherConditions: {
+        temperature: 0,
+        windSpeed: 0,
+        precipitation: 'none',
+        cloudCover: 'clear',
+        notes: ''
+      },
+      generalCondition: {
+        snowCover: 'none',
+        iceCover: 'none',
+        notes: ''
+      }
     };
 
     try {
