@@ -33,7 +33,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
 import { storageService } from '../services/storageService';
-import { sendChecklistEmail, generateEmailContent } from '../services/emailService';
+import { sendChecklistEmail, generateEmailContent, generatePDF } from '../services/emailService';
 
 // Standard sjekkpunkter (kopiert fra branch eb04470)
 const CHECKLIST_ITEMS: ChecklistItem[] = [
@@ -836,34 +836,29 @@ export default function ChecklistView() {
 
     try {
       setIsSendingEmail(true);
+      
+      // Generer PDF
+      const pdfBlob = await generatePDF(checklist);
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      
+      // Lag e-postinnhold
       const { text, html } = generateEmailContent(checklist.items);
+      const subject = `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`;
       
-      console.log('Starter e-postsending...');
-      await sendChecklistEmail({
-        to: '',
-        subject: `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`,
-        text,
-        html,
-        checklistItems: checklist.items
-      });
+      // Åpne standard e-postklient
+      const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+      window.open(mailtoLink, '_blank');
       
-      console.log('E-post sendt vellykket');
       setSnackbar({
         open: true,
-        message: 'E-post sendt vellykket!',
-        severity: 'success'
+        message: 'E-postklient åpnet. Vennligst legg til PDF-vedlegget manuelt.',
+        severity: 'info'
       });
     } catch (error) {
-      console.error('Feil ved sending av e-post:', error);
-      let errorMessage = 'Kunne ikke sende e-post. Vennligst prøv igjen senere.';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
+      console.error('Feil ved generering av e-post:', error);
       setSnackbar({
         open: true,
-        message: errorMessage,
+        message: 'Kunne ikke generere e-post. Vennligst prøv igjen senere.',
         severity: 'error'
       });
     } finally {
