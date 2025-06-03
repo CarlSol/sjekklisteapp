@@ -27,7 +27,7 @@ import {
   Snackbar,
   Alert
 } from '@mui/material';
-import { PhotoCamera, Email as EmailIcon } from '@mui/icons-material';
+import { PhotoCamera, Email as EmailIcon, Download as DownloadIcon } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -803,6 +803,45 @@ export default function ChecklistView() {
     }
   };
 
+  const handleExport = () => {
+    if (checklist) {
+      // Konverter sjekklisten til JSON
+      const jsonString = JSON.stringify(checklist, null, 2);
+      
+      // Opprett en blob med JSON-data
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      
+      // Opprett en URL for bloben
+      const url = URL.createObjectURL(blob);
+      
+      // Opprett et midlertidig a-element for nedlasting
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `sjekkliste_${checklist.solparkName}_område${checklist.areaNumber}_${new Date().toISOString().split('T')[0]}.json`;
+      
+      // Legg til elementet i DOM, klikk på det, og fjern det
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Frigjør URL-en
+      URL.revokeObjectURL(url);
+      
+      setSnackbar({
+        open: true,
+        message: 'Sjekkliste eksportert',
+        severity: 'success'
+      });
+    }
+  };
+
+  // Automatisk lagring når sjekklisten endres
+  useEffect(() => {
+    if (checklist) {
+      storageService.saveChecklist(checklist);
+    }
+  }, [checklist]);
+
   const handleSendEmail = async () => {
     if (!checklist) return;
 
@@ -844,9 +883,10 @@ export default function ChecklistView() {
           <Button
             variant="outlined"
             color="primary"
-            onClick={handleSave}
+            onClick={handleExport}
+            startIcon={<DownloadIcon />}
           >
-            Lagre
+            Eksporter
           </Button>
           {allItemsAnswered && (
             <Button
