@@ -15,7 +15,7 @@ export async function captureImage(): Promise<string> {
   }
 }
 
-export async function getImageData(imageRef: string): Promise<Blob> {
+export async function getImageData(): Promise<Blob> {
   try {
     // TODO: Implementer henting av bildedata
     // Dette vil kreve:
