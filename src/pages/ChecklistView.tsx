@@ -750,7 +750,15 @@ export default function ChecklistView() {
             setShowCamera(false);
           };
           reader.readAsDataURL(file);
+        } else {
+          // Hvis brukeren avbryter eller ingen fil er valgt
+          setShowCamera(false);
         }
+      };
+
+      // Håndter når brukeren avbryter
+      input.oncancel = () => {
+        setShowCamera(false);
       };
 
       // Åpne kameraet
@@ -761,6 +769,7 @@ export default function ChecklistView() {
     } catch (error) {
       console.error('Error accessing camera:', error);
       setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
+      setShowCamera(false);
     }
   };
 
@@ -770,6 +779,12 @@ export default function ChecklistView() {
       handleImageCapture();
     }
   }, [showCamera]);
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setShowCamera(false);
+    setCameraError(null);
+  };
 
   const handleDeleteImage = (imageIndex: number) => {
     if (selectedItem && checklist) {
@@ -1052,10 +1067,7 @@ export default function ChecklistView() {
 
       <Dialog
         open={openDialog}
-        onClose={() => {
-          setOpenDialog(false);
-          setShowCamera(false);
-        }}
+        onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
       >
@@ -1165,10 +1177,7 @@ export default function ChecklistView() {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
-            setOpenDialog(false);
-            setShowCamera(false);
-          }}>
+          <Button onClick={handleCloseDialog}>
             Lukk
           </Button>
         </DialogActions>
