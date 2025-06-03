@@ -492,6 +492,7 @@ export default function ChecklistView() {
     severity: 'success'
   });
   const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [debugMessage, setDebugMessage] = useState<string>('');
 
   const initializePermissions = async () => {
     // Be om geolokasjonstillatelse
@@ -704,10 +705,10 @@ export default function ChecklistView() {
   };
 
   const handleImageCapture = async () => {
-    console.log('Starter handleImageCapture');
+    setDebugMessage('Starter kamera...');
     try {
       // Be om tilgang til kameraet
-      console.log('Ber om kamera-tilgang');
+      setDebugMessage('Ber om kamera-tilgang...');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
@@ -715,7 +716,7 @@ export default function ChecklistView() {
           height: { ideal: 1080 }
         } 
       });
-      console.log('Kamera-tilgang gitt');
+      setDebugMessage('Kamera-tilgang gitt');
 
       // Opprett et input element av type file
       const input = document.createElement('input');
@@ -725,85 +726,76 @@ export default function ChecklistView() {
 
       // Håndter når brukeren har valgt et bilde
       input.onchange = async (e) => {
-        console.log('Input onchange trigget');
+        setDebugMessage('Bilde valgt, prosesserer...');
         const file = (e.target as HTMLInputElement).files?.[0];
-        console.log('Fil valgt:', file ? 'Ja' : 'Nei');
         
         if (file && selectedItem && checklist) {
-          console.log('Starter prosessering av bilde');
           try {
             // Konverter bildet til base64
             const reader = new FileReader();
             reader.onload = (event) => {
-              console.log('FileReader onload trigget');
+              setDebugMessage('Konverterer bilde...');
               const imageData = event.target?.result as string;
-              console.log('Bilde konvertert til base64');
               
               // Opprett et midlertidig bilde for å validere at bildet er gyldig
               const img = new Image();
               img.onload = () => {
-                console.log('Bilde validert og lastet');
+                setDebugMessage('Bilde validert, lagrer...');
                 const updatedItem = {
                   ...selectedItem,
                   imageRefs: [...selectedItem.imageRefs, imageData],
                 };
-                console.log('Oppdatert item med nytt bilde');
 
                 setSelectedItem(updatedItem);
 
                 const updatedItems = checklist.items.map((item) =>
                   item.id === selectedItem.id ? updatedItem : item
                 );
-                console.log('Oppdatert items array');
 
                 const updatedChecklist = {
                   ...checklist,
                   items: updatedItems,
                   updatedAt: new Date().toISOString(),
                 };
-                console.log('Oppdatert checklist');
 
                 setChecklist(updatedChecklist);
-                console.log('Sjekkliste oppdatert i state');
+                setDebugMessage('Bilde lagret!');
                 setShowCamera(false);
-                console.log('Kamera-tilstand resatt');
               };
               img.onerror = (error) => {
-                console.error('Feil ved lasting av bilde:', error);
+                setDebugMessage('Feil ved lasting av bilde');
                 setShowCamera(false);
               };
               img.src = imageData;
             };
             reader.onerror = (error) => {
-              console.error('Feil ved lesing av fil:', error);
+              setDebugMessage('Feil ved lesing av fil');
               setShowCamera(false);
             };
             reader.readAsDataURL(file);
           } catch (error) {
-            console.error('Feil ved prosessering av bilde:', error);
+            setDebugMessage('Feil ved prosessering av bilde');
             setShowCamera(false);
           }
         } else {
-          console.log('Ingen fil valgt eller manglende data');
+          setDebugMessage('Ingen fil valgt');
           setShowCamera(false);
         }
       };
 
       // Håndter når brukeren avbryter
       input.oncancel = () => {
-        console.log('Bruker avbrøt kamera');
+        setDebugMessage('Bruker avbrøt');
         setShowCamera(false);
       };
 
       // Åpne kameraet
-      console.log('Åpner kamera');
       input.click();
 
       // Stopp strømmen etter at brukeren har valgt et bilde
       stream.getTracks().forEach(track => track.stop());
-      console.log('Kamera-strøm stoppet');
     } catch (error) {
-      console.error('Error accessing camera:', error);
+      setDebugMessage('Kunne ikke få tilgang til kamera');
       setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
       setShowCamera(false);
     }
@@ -1123,6 +1115,11 @@ export default function ChecklistView() {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
+            {debugMessage && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                {debugMessage}
+              </Alert>
+            )}
             {locationError ? (
               <Typography color="error" sx={{ mb: 2 }}>
                 {locationError}
