@@ -1,15 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Container,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  Paper,
-  Box,
-  Fab,
-} from '@mui/material';
+import { Button, Card, CardContent, Typography, Grid } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { storageService } from '../services/storageService';
 import type { Checklist } from '../types/Checklist';
@@ -30,51 +21,54 @@ export default function Home() {
     loadChecklists();
   }, []);
 
-  const handleNewChecklist = () => {
-    navigate('/new');
+  const handleCreateNew = () => {
+    navigate('/checklist/new');
   };
 
   return (
-    <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Sjekklister - Furuseth Solpark
+    <div style={{ padding: '20px' }}>
+      <Typography variant="h4" gutterBottom>
+        Sjekklister
       </Typography>
 
-      <Paper sx={{ mb: 4, p: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          Aktive sjekklister
-        </Typography>
-        {checklists.length === 0 ? (
-          <Typography color="text.secondary">
-            Ingen aktive sjekklister. Opprett en ny for å begynne.
-          </Typography>
-        ) : (
-          <List>
-            {checklists.map((checklist) => (
-              <ListItem
-                key={checklist.id}
-                button
-                onClick={() => navigate(`/checklist/${checklist.id}`)}
-              >
-                <ListItemText
-                  primary={`Område ${checklist.areaNumber} - ${checklist.inspectionDate}`}
-                  secondary={`Status: ${checklist.status}`}
-                />
-              </ListItem>
-            ))}
-          </List>
-        )}
-      </Paper>
+      <Grid container spacing={3}>
+        {checklists.map((checklist) => (
+          <Grid item xs={12} sm={6} md={4} key={checklist.id}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6">
+                  Område {checklist.areaNumber}
+                </Typography>
+                <Typography color="textSecondary">
+                  {new Date(checklist.inspectionDate).toLocaleDateString('nb-NO')}
+                </Typography>
+                <Typography variant="body2">
+                  Status: {checklist.status}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
-      <Box sx={{ position: 'fixed', bottom: 16, right: 16 }}>
-        <Fab
-          color="primary"
-          aria-label="Ny sjekkliste"
-          onClick={handleNewChecklist}
-        >
-          <AddIcon />
-        </Fab>
-      </Box>
-    </Container>
+      <Button
+        variant="contained"
+        color="primary"
+        startIcon={<AddIcon />}
+        onClick={handleCreateNew}
+        style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          borderRadius: '50%',
+          width: '56px',
+          height: '56px',
+          minWidth: '56px',
+          padding: 0
+        }}
+      >
+        <AddIcon />
+      </Button>
+    </div>
   );
 } 
