@@ -36,68 +36,13 @@ import { storageService } from '../services/storageService';
 import { generatePDF } from '../services/emailService';
 import { CHECKLIST_ITEMS } from '../constants/checklistItems';
 
-export default function ChecklistView() {
+export default function ChecklistForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [checklist, setChecklist] = useState<Checklist | null>(null);
-  const [selectedItem, setSelectedItem] = useState<ChecklistItem | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [showCamera, setShowCamera] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [debugMessage, setDebugMessage] = useState<string>('');
-
-  const initializePermissions = async () => {
-    // Be om geolokasjonstillatelse
-    if (navigator.geolocation) {
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 5000
-          });
-        });
-        
-        setCurrentLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setLocationError(null);
-      } catch (error) {
-        console.error('Error getting location:', error);
-        setLocationError('Kunne ikke få tilgang til posisjon. Vennligst tillat posisjonstilgang i nettleserinnstillingene.');
-      }
-    }
-
-    // Be om kameratillatelse
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        } 
-      });
-      // Stopp strømmen umiddelbart - vi vil starte den igjen når vi trenger den
-      stream.getTracks().forEach(track => track.stop());
-      setCameraError(null);
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
-    }
-  };
-
-  useEffect(() => {
-    initializePermissions();
-  }, []);
+  const [selectedItem, setSelectedItem] = useState<ChecklistItem | null>(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   useEffect(() => {
     const loadChecklist = async () => {
@@ -129,28 +74,11 @@ export default function ChecklistView() {
   const handleItemClick = (item: ChecklistItem) => {
     setSelectedItem(item);
     setOpenDialog(true);
-    
-    // Oppdater koordinater når dialog åpnes
-    if (navigator.geolocation) {
-      try {
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 5000
-          });
-        });
-        
-        setCurrentLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        });
-        setLocationError(null);
-      } catch (error) {
-        console.error('Error getting location:', error);
-        setLocationError('Kunne ikke oppdatere posisjon. Vennligst sjekk nettleserinnstillingene.');
-      }
-    }
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setSelectedItem(null);
   };
 
   const handleStatusChange = async (itemId: string, status: 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null) => {
@@ -281,219 +209,6 @@ export default function ChecklistView() {
       });
     }
   };
-
-  const handleCloseDialog = () => {
-    console.log('Lukker dialog');
-    setOpenDialog(false);
-    setShowCamera(false);
-    setCameraError(null);
-  };
-
-  const handleAddItem = (item: ChecklistItem) => {
-    if (checklist) {
-      // Finn alle eksisterende punkter med samme base-id
-      const baseId = item.id.split('-')[0];
-      const existingItems = checklist.items.filter(i => i.id.startsWith(baseId));
-      
-      // Generer nytt nummer for det nye punktet
-      const newNumber = existingItems.length + 1;
-      
-      const newItem = {
-        ...item,
-        id: `${baseId}-${newNumber}`,
-        checkPoint: `${item.checkPoint} (${newNumber})`,
-        status: null,
-        notes: '',
-        imageRefs: [],
-        timestamp: '',
-        inspector: '',
-      };
-
-      // Finn indeksen til det valgte punktet
-      const currentIndex = checklist.items.findIndex(i => i.id === item.id);
-      
-      // Legg til det nye punktet rett etter det valgte
-      const updatedItems = [
-        ...checklist.items.slice(0, currentIndex + 1),
-        newItem,
-        ...checklist.items.slice(currentIndex + 1)
-      ];
-
-      const updatedChecklist = {
-        ...checklist,
-        items: updatedItems,
-        updatedAt: new Date().toISOString(),
-      };
-
-      setChecklist(updatedChecklist);
-    }
-  };
-
-  // Hjelpefunksjon for å sjekke om et punkt er det siste av sin type
-  const isLastOfType = (item: ChecklistItem) => {
-    const baseId = item.id.split('-')[0];
-    const itemsOfType = checklist?.items.filter(i => i.id.startsWith(baseId)) || [];
-    return itemsOfType[itemsOfType.length - 1]?.id === item.id;
-  };
-
-  const compressImage = (base64String: string): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        // Beregn ny størrelse (maks 800px i bredde eller høyde)
-        let width = img.width;
-        let height = img.height;
-        const maxSize = 800;
-        
-        if (width > height && width > maxSize) {
-          height = Math.round((height * maxSize) / width);
-          width = maxSize;
-        } else if (height > maxSize) {
-          width = Math.round((width * maxSize) / height);
-          height = maxSize;
-        }
-
-        // Opprett canvas og tegn bildet i ny størrelse
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Kunne ikke opprette canvas context'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Konverter til JPEG med 80% kvalitet
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
-        resolve(compressedBase64);
-      };
-      img.onerror = () => reject(new Error('Kunne ikke laste bildet'));
-      img.src = base64String;
-    });
-  };
-
-  const handleImageCapture = async () => {
-    setDebugMessage('Starter kamera...');
-    try {
-      // Be om tilgang til kameraet
-      setDebugMessage('Ber om kamera-tilgang...');
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1920 },
-          height: { ideal: 1080 }
-        } 
-      });
-      setDebugMessage('Kamera-tilgang gitt');
-
-      // Opprett et input element av type file
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.capture = 'environment'; // Bruk bakkameraet
-
-      // Håndter når brukeren har valgt et bilde
-      input.onchange = async (e) => {
-        setDebugMessage('Bilde valgt, prosesserer...');
-        const file = (e.target as HTMLInputElement).files?.[0];
-        
-        if (file && selectedItem && checklist) {
-          try {
-            // Konverter bildet til base64
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-              setDebugMessage('Konverterer bilde...');
-              const imageData = event.target?.result as string;
-              
-              try {
-                // Komprimer bildet
-                setDebugMessage('Komprimerer bilde...');
-                const compressedImage = await compressImage(imageData);
-                
-                // Opprett et midlertidig bilde for å validere at bildet er gyldig
-                const img = new Image();
-                img.onload = () => {
-                  setDebugMessage('Bilde validert, lagrer...');
-                  const updatedItem = {
-                    ...selectedItem,
-                    imageRefs: [...selectedItem.imageRefs, compressedImage],
-                  };
-
-                  setSelectedItem(updatedItem);
-
-                  const updatedItems = checklist.items.map((item) =>
-                    item.id === selectedItem.id ? updatedItem : item
-                  );
-
-                  const updatedChecklist = {
-                    ...checklist,
-                    items: updatedItems,
-                    updatedAt: new Date().toISOString(),
-                  };
-
-                  setChecklist(updatedChecklist);
-                  setDebugMessage('Bilde lagret!');
-                  setShowCamera(false);
-                };
-                img.onerror = () => {
-                  setDebugMessage('Feil ved lasting av bilde');
-                  setShowCamera(false);
-                };
-                img.src = compressedImage;
-              } catch {
-                setDebugMessage('Feil ved komprimering av bilde');
-                setShowCamera(false);
-              }
-            };
-            reader.onerror = () => {
-              setDebugMessage('Feil ved lesing av fil');
-              setShowCamera(false);
-            };
-            reader.readAsDataURL(file);
-          } catch {
-            setDebugMessage('Feil ved prosessering av bilde');
-            setShowCamera(false);
-          }
-        } else {
-          setDebugMessage('Ingen fil valgt');
-          setShowCamera(false);
-        }
-      };
-
-      // Håndter når brukeren avbryter
-      input.oncancel = () => {
-        setDebugMessage('Bruker avbrøt');
-        setShowCamera(false);
-      };
-
-      // Åpne kameraet
-      input.click();
-
-      // Stopp strømmen etter at brukeren har valgt et bilde
-      stream.getTracks().forEach(track => track.stop());
-    } catch {
-      setDebugMessage('Kunne ikke få tilgang til kamera');
-      setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
-      setShowCamera(false);
-    }
-  };
-
-  // Oppdater useEffect for kamera
-  useEffect(() => {
-    let mounted = true;
-    console.log('Kamera useEffect trigget, showCamera:', showCamera);
-    
-    if (showCamera && mounted) {
-      console.log('Starter handleImageCapture fra useEffect');
-      handleImageCapture();
-    }
-    
-    return () => {
-      console.log('Cleanup i kamera useEffect');
-      mounted = false;
-    };
-  }, [showCamera]);
 
   const handleSubmit = async () => {
     if (!checklist) return;
