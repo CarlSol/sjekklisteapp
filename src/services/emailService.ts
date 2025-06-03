@@ -1,149 +1,80 @@
-import type { Checklist } from '../types/Checklist';
-import nodemailer from 'nodemailer';
-import PDFDocument from 'pdfkit';
+import type { ChecklistItem } from '../types/Checklist';
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
-import { Buffer } from 'buffer';
 
-// Last inn miljøvariabler i utviklingsmiljø
-if (process.env.NODE_ENV !== 'production') {
-  require('dotenv').config();
+// Konfigurasjon for e-post-tjenesten
+const EMAIL_SERVICE_URL = import.meta.env.VITE_EMAIL_SERVICE_URL || 'http://localhost:3001/api/email';
+
+interface EmailData {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  checklistItems: ChecklistItem[];
 }
 
-class EmailService {
-  private transporter: nodemailer.Transporter;
-
-  constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_PORT === '465',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASSWORD
+export const sendChecklistEmail = async (emailData: EmailData): Promise<void> => {
+  try {
+    const response = await fetch(EMAIL_SERVICE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
       },
-      tls: {
-        rejectUnauthorized: process.env.NODE_ENV === 'production'
-      }
+      body: JSON.stringify(emailData),
     });
-  }
 
-  public async generateReportPDF(checklist: Checklist): Promise<Buffer> {
-    return new Promise((resolve, reject) => {
-      try {
-        const doc = new PDFDocument({
-          size: 'A4',
-          margin: 50,
-          info: {
-            Title: `Sjekkliste Rapport - Område ${checklist.areaNumber}`,
-            Author: 'Solcellespesialisten',
-            Subject: 'Sjekkliste Rapport'
-          }
-        });
-
-        const chunks: Buffer[] = [];
-        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-        doc.on('end', () => resolve(Buffer.concat(chunks)));
-
-        // Header
-        doc.fontSize(24)
-           .font('Helvetica-Bold')
-           .text('Sjekkliste Rapport', { align: 'center' })
-           .moveDown();
-
-        // Informasjon
-        doc.fontSize(12)
-           .font('Helvetica')
-           .text(`Område: ${checklist.areaNumber}`)
-           .text(`Dato: ${format(new Date(checklist.inspectionDate), 'dd. MMMM yyyy', { locale: nb })}`)
-           .text(`Inspektør: ${checklist.inspectors.join(', ')}`)
-           .text(`Værforhold: ${checklist.weatherConditions}`)
-           .text(`Generell tilstand: ${checklist.generalCondition}`)
-           .moveDown();
-
-        // Sjekkliste-elementer
-        doc.fontSize(14)
-           .font('Helvetica-Bold')
-           .text('Sjekkliste-elementer')
-           .moveDown();
-
-        checklist.items.forEach((item, index) => {
-          doc.fontSize(12)
-             .font('Helvetica-Bold')
-             .text(`${index + 1}. ${item.checkPoint}`)
-             .font('Helvetica')
-             .text(`Kategori: ${item.category}`)
-             .text(`Frekvens: ${item.frequency}`)
-             .text(`Status: ${item.status || 'Ikke satt'}`)
-             .text(`Kommentar: ${item.notes || 'Ingen kommentar'}`)
-             .moveDown();
-
-          // Vis bilde hvis det finnes
-          if (item.imageRefs && item.imageRefs.length > 0) {
-            item.imageRefs.forEach(imageRef => {
-              doc.image(imageRef, {
-                fit: [400, 300],
-                align: 'center'
-              });
-              doc.moveDown();
-            });
-          }
-
-          // Vis koordinater hvis de finnes
-          if (item.coordinates) {
-            doc.text(`Koordinater: ${item.coordinates.latitude}, ${item.coordinates.longitude}`)
-               .moveDown();
-          }
-        });
-
-        // Footer
-        const footerText = `Generert ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: nb })}`;
-        doc.fontSize(10)
-           .text(footerText, {
-             align: 'center'
-           });
-
-        doc.end();
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  public async sendChecklistReport(checklist: Checklist): Promise<boolean> {
-    try {
-      const pdfBuffer = await this.generateReportPDF(checklist);
-
-      const mailOptions = {
-        from: process.env.EMAIL_FROM,
-        to: process.env.EMAIL_TO,
-        subject: `Sjekkliste Rapport - ${checklist.solparkName} Område ${checklist.areaNumber}`,
-        text: `Vedlagt finner du sjekkliste rapport for ${checklist.solparkName} Område ${checklist.areaNumber}.`,
-        attachments: [
-          {
-            filename: `sjekkliste_${checklist.areaNumber}_${new Date().toISOString().split('T')[0]}.pdf`,
-            content: pdfBuffer,
-          },
-        ],
-      };
-
-      await this.transporter.sendMail(mailOptions);
-      return true;
-    } catch (error) {
-      console.error('Feil ved sending av e-post:', error);
-      return false;
+    if (!response.ok) {
+      throw new Error(`E-post-tjenesten svarte med status ${response.status}`);
     }
+  } catch (error) {
+    console.error('Feil ved sending av e-post:', error);
+    throw new Error('Kunne ikke sende e-post. Vennligst prøv igjen senere.');
   }
-}
+};
 
-// Opprett en singleton-instans
-const emailService = new EmailService();
+export const generateEmailContent = (checklistItems: ChecklistItem[]): { text: string; html: string } => {
+  const date = format(new Date(), 'dd.MM.yyyy', { locale: nb });
+  const time = format(new Date(), 'HH:mm', { locale: nb });
 
-// Eksporter funksjoner
-export async function sendChecklistReport(checklist: Checklist): Promise<boolean> {
-  return emailService.sendChecklistReport(checklist);
-}
+  const textContent = `
+Sjekkliste - ${date} ${time}
 
-export async function generateReportPDF(checklist: Checklist): Promise<Buffer> {
-  return emailService.generateReportPDF(checklist);
-} 
+${checklistItems.map(item => `${item.status === 'OK' ? '✓' : '✗'} ${item.checkPoint}`).join('\n')}
+
+Sendt fra SjekklisteApp
+`;
+
+  const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; }
+    .header { margin-bottom: 20px; }
+    .item { margin: 5px 0; }
+    .checked { color: #2e7d32; }
+    .unchecked { color: #c62828; }
+    .footer { margin-top: 20px; font-size: 0.9em; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Sjekkliste - ${date} ${time}</h2>
+  </div>
+  <div class="items">
+    ${checklistItems.map(item => `
+      <div class="item ${item.status === 'OK' ? 'checked' : 'unchecked'}">
+        ${item.status === 'OK' ? '✓' : '✗'} ${item.checkPoint}
+      </div>
+    `).join('')}
+  </div>
+  <div class="footer">
+    <p>Sendt fra SjekklisteApp</p>
+  </div>
+</body>
+</html>
+`;
+
+  return { text: textContent, html: htmlContent };
+}; 
