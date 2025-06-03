@@ -540,19 +540,22 @@ export default function ChecklistView() {
 
   useEffect(() => {
     if (id) {
+      console.log('ID:', id);
+      console.log('CHECKLIST_ITEMS:', CHECKLIST_ITEMS);
       const loadedChecklist = storageService.getChecklistById(id);
-      if (loadedChecklist) {
-        setChecklist(loadedChecklist);
-      } else {
-        // Hvis ingen sjekkliste finnes, opprett en ny med alle standardpunkter
+      console.log('Loaded checklist:', loadedChecklist);
+      
+      // Hvis ingen sjekkliste finnes, eller hvis den eksisterende sjekklisten har tom items-array
+      if (!loadedChecklist || !loadedChecklist.items || loadedChecklist.items.length === 0) {
+        console.log('Creating new checklist with items');
         const newChecklist: Checklist = {
           id,
-          solparkName: '',
-          areaNumber: 0,
-          inspectionDate: new Date().toISOString(),
-          inspectors: [],
-          weatherConditions: '',
-          generalCondition: '',
+          solparkName: loadedChecklist?.solparkName || '',
+          areaNumber: loadedChecklist?.areaNumber || 0,
+          inspectionDate: loadedChecklist?.inspectionDate || new Date().toISOString(),
+          inspectors: loadedChecklist?.inspectors || [],
+          weatherConditions: loadedChecklist?.weatherConditions || '',
+          generalCondition: loadedChecklist?.generalCondition || '',
           items: CHECKLIST_ITEMS.map(item => ({
             ...item,
             timestamp: new Date().toISOString(),
@@ -562,11 +565,14 @@ export default function ChecklistView() {
             inspector: ''
           })),
           status: 'draft',
-          createdAt: new Date().toISOString(),
+          createdAt: loadedChecklist?.createdAt || new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
+        console.log('New checklist created:', newChecklist);
         setChecklist(newChecklist);
         storageService.saveChecklist(newChecklist);
+      } else {
+        setChecklist(loadedChecklist);
       }
     }
   }, [id, navigate]);
