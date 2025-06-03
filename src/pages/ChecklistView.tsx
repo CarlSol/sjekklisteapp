@@ -704,6 +704,43 @@ export default function ChecklistView() {
     return itemsOfType[itemsOfType.length - 1]?.id === item.id;
   };
 
+  const compressImage = (base64String: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        // Beregn ny størrelse (maks 800px i bredde eller høyde)
+        let width = img.width;
+        let height = img.height;
+        const maxSize = 800;
+        
+        if (width > height && width > maxSize) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+
+        // Opprett canvas og tegn bildet i ny størrelse
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Kunne ikke opprette canvas context'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Konverter til JPEG med 80% kvalitet
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        resolve(compressedBase64);
+      };
+      img.onerror = () => reject(new Error('Kunne ikke laste bildet'));
+      img.src = base64String;
+    });
+  };
+
   const handleImageCapture = async () => {
     setDebugMessage('Starter kamera...');
     try {
@@ -733,40 +770,49 @@ export default function ChecklistView() {
           try {
             // Konverter bildet til base64
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = async (event) => {
               setDebugMessage('Konverterer bilde...');
               const imageData = event.target?.result as string;
               
-              // Opprett et midlertidig bilde for å validere at bildet er gyldig
-              const img = new Image();
-              img.onload = () => {
-                setDebugMessage('Bilde validert, lagrer...');
-                const updatedItem = {
-                  ...selectedItem,
-                  imageRefs: [...selectedItem.imageRefs, imageData],
+              try {
+                // Komprimer bildet
+                setDebugMessage('Komprimerer bilde...');
+                const compressedImage = await compressImage(imageData);
+                
+                // Opprett et midlertidig bilde for å validere at bildet er gyldig
+                const img = new Image();
+                img.onload = () => {
+                  setDebugMessage('Bilde validert, lagrer...');
+                  const updatedItem = {
+                    ...selectedItem,
+                    imageRefs: [...selectedItem.imageRefs, compressedImage],
+                  };
+
+                  setSelectedItem(updatedItem);
+
+                  const updatedItems = checklist.items.map((item) =>
+                    item.id === selectedItem.id ? updatedItem : item
+                  );
+
+                  const updatedChecklist = {
+                    ...checklist,
+                    items: updatedItems,
+                    updatedAt: new Date().toISOString(),
+                  };
+
+                  setChecklist(updatedChecklist);
+                  setDebugMessage('Bilde lagret!');
+                  setShowCamera(false);
                 };
-
-                setSelectedItem(updatedItem);
-
-                const updatedItems = checklist.items.map((item) =>
-                  item.id === selectedItem.id ? updatedItem : item
-                );
-
-                const updatedChecklist = {
-                  ...checklist,
-                  items: updatedItems,
-                  updatedAt: new Date().toISOString(),
+                img.onerror = (error) => {
+                  setDebugMessage('Feil ved lasting av bilde');
+                  setShowCamera(false);
                 };
-
-                setChecklist(updatedChecklist);
-                setDebugMessage('Bilde lagret!');
+                img.src = compressedImage;
+              } catch (error) {
+                setDebugMessage('Feil ved komprimering av bilde');
                 setShowCamera(false);
-              };
-              img.onerror = (error) => {
-                setDebugMessage('Feil ved lasting av bilde');
-                setShowCamera(false);
-              };
-              img.src = imageData;
+              }
             };
             reader.onerror = (error) => {
               setDebugMessage('Feil ved lesing av fil');
