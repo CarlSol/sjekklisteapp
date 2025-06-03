@@ -792,17 +792,6 @@ export default function ChecklistView() {
     }
   };
 
-  const handleSave = () => {
-    if (checklist) {
-      storageService.saveChecklist(checklist);
-      setSnackbar({
-        open: true,
-        message: 'Sjekkliste lagret',
-        severity: 'success'
-      });
-    }
-  };
-
   const handleExport = () => {
     if (checklist) {
       // Konverter sjekklisten til JSON
