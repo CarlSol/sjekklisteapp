@@ -122,12 +122,12 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
 
       // Legg til bilder for hvert sjekkpunkt
       for (const item of items) {
-        if (item.imageRefs && item.imageRefs.length > 0) {
+        if (item.images && item.images.length > 0) {
           doc.setFontSize(10);
           doc.text(`Bilder for ${item.id}:`, 14, currentY);
           currentY += 5;
 
-          for (const imageRef of item.imageRefs) {
+          for (const imageRef of item.images) {
             try {
               const img = await loadImage(imageRef);
               const imgWidth = 100;

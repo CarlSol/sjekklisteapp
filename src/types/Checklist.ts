@@ -1,32 +1,41 @@
-export type ChecklistItem = {
+export interface ChecklistItem {
   id: string;
-  category: string;
-  checkPoint: string;
-  frequency: string;
-  status: 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null;
-  notes: string;
-  imageRefs: string[];
-  coordinates?: {
+  text: string;
+  completed: boolean;
+  images: string[];
+  notes?: string;
+  location?: {
     latitude: number;
     longitude: number;
   };
+  category: string;
+  checkPoint: string;
+  timestamp: string;
+  inspectors: string[];
+  frequency: string;
+  status: 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null;
+}
+
+export interface Checklist {
+  id: string;
+  title: string;
+  items: ChecklistItem[];
   timestamp: string;
   inspector: string;
-};
+  status?: 'draft' | 'completed' | 'sent';
+  solparkName?: string;
+  areaNumber?: string;
+  inspectionDate?: string;
+  inspectors?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
 
-export type Checklist = {
-  id: string;
-  solparkName: string;
-  areaNumber: number;
-  inspectionDate: string;
-  inspectors: string[];
-  weatherConditions: string;
-  generalCondition: string;
+export interface ChecklistFormData {
+  title: string;
+  inspector: string;
   items: ChecklistItem[];
-  status: 'draft' | 'completed' | 'sent';
-  createdAt: string;
-  updatedAt: string;
-};
+}
 
 export type InspectionReport = {
   checklist: Checklist;

@@ -57,15 +57,15 @@ class StorageService {
       ...checklist,
       items: checklist.items.map(item => ({
         ...item,
-        imageRefs: [] // Fjern bildereferanser fra sjekklisten
+        images: [] // Fjern bildereferanser fra sjekklisten
       }))
     };
 
     // Lagre bilder separat
     for (const item of checklist.items) {
-      for (let i = 0; i < item.imageRefs.length; i++) {
+      for (let i = 0; i < item.images.length; i++) {
         const imageId = `${checklist.id}_${item.id}_${i}`;
-        await this.saveImage(imageId, item.imageRefs[i]);
+        await this.saveImage(imageId, item.images[i]);
       }
     }
 
@@ -111,7 +111,7 @@ class StorageService {
         // Hent bilder for hvert punkt
         const itemsWithImages = await Promise.all(
           checklist.items.map(async (item: any) => {
-            const imageRefs = [];
+            const images = [];
             for (let i = 0; i < 10; i++) { // Anta maks 10 bilder per punkt
               const imageId = `${id}_${item.id}_${i}`;
               try {
@@ -121,13 +121,13 @@ class StorageService {
                   request.onerror = () => reject(request.error);
                 });
                 if (image) {
-                  imageRefs.push((image as any).data);
+                  images.push((image as any).data);
                 }
               } catch (error) {
                 console.error('Error loading image:', error);
               }
             }
-            return { ...item, imageRefs };
+            return { ...item, images };
           })
         );
 
@@ -161,7 +161,7 @@ class StorageService {
     const checklist = await this.getChecklistById(id);
     if (checklist) {
       for (const item of checklist.items) {
-        for (let i = 0; i < item.imageRefs.length; i++) {
+        for (let i = 0; i < item.images.length; i++) {
           const imageId = `${id}_${item.id}_${i}`;
           await this.deleteImage(imageId);
         }
@@ -190,26 +190,21 @@ class StorageService {
     });
   }
 
-  async clearAll(): Promise<void> {
-    const db = await this.waitForDB();
+  async uploadImage(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
-      const transaction = db.transaction([CHECKLISTS_STORE, IMAGES_STORE], 'readwrite');
-      const checklistStore = transaction.objectStore(CHECKLISTS_STORE);
-      const imagesStore = transaction.objectStore(IMAGES_STORE);
-      
-      const checklistRequest = checklistStore.clear();
-      const imagesRequest = imagesStore.clear();
-
-      Promise.all([
-        new Promise((resolve, reject) => {
-          checklistRequest.onsuccess = () => resolve(undefined);
-          checklistRequest.onerror = () => reject(checklistRequest.error);
-        }),
-        new Promise((resolve, reject) => {
-          imagesRequest.onsuccess = () => resolve(undefined);
-          imagesRequest.onerror = () => reject(imagesRequest.error);
-        })
-      ]).then(() => resolve()).catch(reject);
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const imageData = e.target?.result as string;
+          const imageId = `image_${Date.now()}`;
+          await this.saveImage(imageId, imageData);
+          resolve(imageData);
+        } catch (error) {
+          reject(error);
+        }
+      };
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
     });
   }
 }

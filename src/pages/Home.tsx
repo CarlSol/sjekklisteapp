@@ -1,239 +1,83 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import {
-  Container,
-  Typography,
-  List,
-  ListItem,
-  ListItemText,
-  Paper,
   Box,
-  Fab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Button,
+  Container,
   TextField,
+  Typography,
 } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { storageService } from '../services/storageService';
-import type { Checklist, ChecklistItem } from '../types/Checklist';
+import type { Checklist } from '../types/Checklist';
 
-// Standard sjekkpunkter
-const CHECKLIST_ITEMS: ChecklistItem[] = [
-  // 1. Gjerder og Porter
-  {
-    id: '1.1',
-    category: '1. Gjerder og Porter',
-    checkPoint: 'Visuell inspeksjon av gjerder (skader, integritet, festepunkter)',
-    frequency: 'Årlig',
-    status: null,
-    notes: '',
-    imageRefs: [],
-    timestamp: '',
-    inspector: '',
-  },
-  {
-    id: '1.2',
-    category: '1. Gjerder og Porter',
-    checkPoint: 'Visuell inspeksjon av gjerdestolper (stabilitet, skader)',
-    frequency: 'Årlig',
-    status: null,
-    notes: '',
-    imageRefs: [],
-    timestamp: '',
-    inspector: '',
-  },
-  // ... Legg til flere sjekkpunkter her
-];
-
-export default function Home() {
+const Home: React.FC = () => {
   const navigate = useNavigate();
-  const [checklists, setChecklists] = useState<Checklist[]>([]);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [newChecklist, setNewChecklist] = useState({
-    solparkName: 'Furuseth Solpark',
-    areaNumber: 0,
-    inspectionDate: new Date().toISOString().split('T')[0],
-    inspectors: [''],
-  });
-
-  useEffect(() => {
-    const loadChecklists = async () => {
-      try {
-        const loadedChecklists = await storageService.getAllChecklists();
-        setChecklists(loadedChecklists);
-      } catch (error) {
-        console.error('Feil ved lasting av sjekklister:', error);
-      }
-    };
-    loadChecklists();
-  }, []);
-
-  const handleNewChecklist = () => {
-    setOpenDialog(true);
-  };
+  const [solparkName, setSolparkName] = useState('');
+  const [areaNumber, setAreaNumber] = useState('');
 
   const handleCreateChecklist = async () => {
-    const checklist: Checklist = {
-      id: Date.now().toString(),
-      ...newChecklist,
-      items: CHECKLIST_ITEMS.map(item => ({
-        ...item,
-        timestamp: new Date().toISOString(),
-        status: null,
-        notes: '',
-        imageRefs: [],
-        inspector: ''
-      })),
-      status: 'draft',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      weatherConditions: '',
-      generalCondition: ''
-    };
+    if (!solparkName || !areaNumber) {
+      alert('Vennligst fyll ut alle felt');
+      return;
+    }
 
     try {
-      await storageService.saveChecklist(checklist);
-      navigate(`/checklist/${checklist.id}`);
+      const newChecklist: Checklist = {
+        id: Date.now().toString(),
+        title: `${solparkName} - Område ${areaNumber}`,
+        solparkName,
+        areaNumber,
+        inspectionDate: new Date().toISOString(),
+        inspectors: [],
+        items: [],
+        timestamp: new Date().toISOString(),
+        inspector: ''
+      };
+
+      await storageService.saveChecklist(newChecklist);
+      navigate(`/checklist/${newChecklist.id}`);
     } catch (error) {
-      console.error('Feil ved opprettelse av sjekkliste:', error);
+      console.error('Error creating checklist:', error);
+      alert('Kunne ikke opprette sjekkliste. Vennligst prøv igjen.');
     }
   };
 
-  const handleInspectorChange = (index: number, value: string) => {
-    const newInspectors = [...newChecklist.inspectors];
-    newInspectors[index] = value;
-    setNewChecklist({ ...newChecklist, inspectors: newInspectors });
-  };
-
-  const handleAddInspector = () => {
-    setNewChecklist({
-      ...newChecklist,
-      inspectors: [...newChecklist.inspectors, ''],
-    });
-  };
-
-  const handleRemoveInspector = (index: number) => {
-    const newInspectors = newChecklist.inspectors.filter((_, i) => i !== index);
-    setNewChecklist({ ...newChecklist, inspectors: newInspectors });
-  };
-
   return (
-    <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Sjekklister - Furuseth Solpark
-      </Typography>
-
-      <Paper sx={{ mb: 4, p: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          Aktive sjekklister
+    <Container maxWidth="sm">
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Opprett ny sjekkliste
         </Typography>
-        {checklists.length === 0 ? (
-          <Typography color="text.secondary">
-            Ingen aktive sjekklister. Opprett en ny for å begynne.
-          </Typography>
-        ) : (
-          <List>
-            {checklists.map((checklist) => (
-              <ListItem
-                key={checklist.id}
-                button
-                onClick={() => navigate(`/checklist/${checklist.id}`)}
-              >
-                <ListItemText
-                  primary={`Område ${checklist.areaNumber} - ${new Date(checklist.inspectionDate).toLocaleDateString('nb-NO')}`}
-                  secondary={`Status: ${checklist.status}`}
-                />
-              </ListItem>
-            ))}
-          </List>
-        )}
-      </Paper>
-
-      <Box sx={{ position: 'fixed', bottom: 16, right: 16 }}>
-        <Fab
-          color="primary"
-          aria-label="Ny sjekkliste"
-          onClick={handleNewChecklist}
-        >
-          <AddIcon />
-        </Fab>
-      </Box>
-
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>Opprett ny sjekkliste</DialogTitle>
-        <DialogContent>
+        <Box component="form" sx={{ mt: 2 }}>
           <TextField
             fullWidth
             label="Solpark"
-            value={newChecklist.solparkName}
-            onChange={(e) =>
-              setNewChecklist({ ...newChecklist, solparkName: e.target.value })
-            }
+            value={solparkName}
+            onChange={(e) => setSolparkName(e.target.value)}
             margin="normal"
+            required
           />
           <TextField
             fullWidth
             label="Områdenummer"
-            type="number"
-            value={newChecklist.areaNumber}
-            onChange={(e) =>
-              setNewChecklist({
-                ...newChecklist,
-                areaNumber: parseInt(e.target.value) || 0,
-              })
-            }
+            value={areaNumber}
+            onChange={(e) => setAreaNumber(e.target.value)}
             margin="normal"
+            required
           />
-          <TextField
-            fullWidth
-            label="Inspeksjonsdato"
-            type="date"
-            value={newChecklist.inspectionDate}
-            onChange={(e) =>
-              setNewChecklist({ ...newChecklist, inspectionDate: e.target.value })
-            }
-            margin="normal"
-            InputLabelProps={{ shrink: true }}
-          />
-          <Typography variant="subtitle1" sx={{ mt: 2, mb: 1 }}>
-            Inspektører
-          </Typography>
-          {newChecklist.inspectors.map((inspector, index) => (
-            <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
-              <TextField
-                fullWidth
-                label={`Inspektør ${index + 1}`}
-                value={inspector}
-                onChange={(e) => handleInspectorChange(index, e.target.value)}
-              />
-              {index > 0 && (
-                <Button
-                  color="error"
-                  onClick={() => handleRemoveInspector(index)}
-                >
-                  Fjern
-                </Button>
-              )}
-            </Box>
-          ))}
           <Button
-            variant="outlined"
-            onClick={handleAddInspector}
-            sx={{ mt: 1 }}
+            variant="contained"
+            color="primary"
+            onClick={handleCreateChecklist}
+            sx={{ mt: 2 }}
+            fullWidth
           >
-            Legg til inspektør
+            Opprett sjekkliste
           </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Avbryt</Button>
-          <Button onClick={handleCreateChecklist} variant="contained">
-            Opprett
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </Box>
     </Container>
   );
-} 
+};
+
+export default Home; 

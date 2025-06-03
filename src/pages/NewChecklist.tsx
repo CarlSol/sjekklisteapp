@@ -22,14 +22,15 @@ export default function NewChecklist() {
 
     const newChecklist: Checklist = {
       id: uuidv4(),
+      title: `${solparkName} - Område ${areaNumber}`,
       solparkName,
-      areaNumber: parseInt(areaNumber),
+      areaNumber,
       inspectionDate: new Date().toISOString().split('T')[0],
       inspectors: [],
-      weatherConditions: '',
-      generalCondition: '',
       items: [],
       status: 'draft',
+      timestamp: new Date().toISOString(),
+      inspector: '',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -39,48 +40,39 @@ export default function NewChecklist() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Ny sjekkliste
-      </Typography>
-
-      <Paper sx={{ p: 3 }}>
-        <form onSubmit={handleSubmit}>
-          <TextField
-            fullWidth
-            label="Solpark"
-            value={solparkName}
-            onChange={(e) => setSolparkName(e.target.value)}
-            margin="normal"
-            required
-          />
-          <TextField
-            fullWidth
-            label="Områdenummer"
-            type="number"
-            value={areaNumber}
-            onChange={(e) => setAreaNumber(e.target.value)}
-            margin="normal"
-            required
-          />
-          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/')}
+    <Container maxWidth="sm">
+      <Box sx={{ mt: 4 }}>
+        <Paper sx={{ p: 3 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Ny Sjekkliste
+          </Typography>
+          <form onSubmit={handleSubmit}>
+            <TextField
               fullWidth
-            >
-              Avbryt
-            </Button>
+              label="Solpark Navn"
+              value={solparkName}
+              onChange={(e) => setSolparkName(e.target.value)}
+              margin="normal"
+            />
+            <TextField
+              fullWidth
+              label="Område Nummer"
+              value={areaNumber}
+              onChange={(e) => setAreaNumber(e.target.value)}
+              margin="normal"
+            />
             <Button
               type="submit"
               variant="contained"
+              color="primary"
               fullWidth
+              sx={{ mt: 2 }}
             >
-              Opprett
+              Opprett Sjekkliste
             </Button>
-          </Box>
-        </form>
-      </Paper>
+          </form>
+        </Paper>
+      </Box>
     </Container>
   );
 } 
