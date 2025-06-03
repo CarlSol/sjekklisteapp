@@ -33,7 +33,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
 import { storageService } from '../services/storageService';
-import { generateEmailContent, generatePDF } from '../services/emailService';
+import { generatePDF } from '../services/emailService';
 
 // Standard sjekkpunkter (kopiert fra branch eb04470)
 const CHECKLIST_ITEMS: ChecklistItem[] = [
