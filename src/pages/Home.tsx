@@ -18,7 +18,35 @@ import {
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { storageService } from '../services/storageService';
-import type { Checklist } from '../types/Checklist';
+import type { Checklist, ChecklistItem } from '../types/Checklist';
+
+// Standard sjekkpunkter
+const CHECKLIST_ITEMS: ChecklistItem[] = [
+  // 1. Gjerder og Porter
+  {
+    id: '1.1',
+    category: '1. Gjerder og Porter',
+    checkPoint: 'Visuell inspeksjon av gjerder (skader, integritet, festepunkter)',
+    frequency: 'Årlig',
+    status: null,
+    notes: '',
+    imageRefs: [],
+    timestamp: '',
+    inspector: '',
+  },
+  {
+    id: '1.2',
+    category: '1. Gjerder og Porter',
+    checkPoint: 'Visuell inspeksjon av gjerdestolper (stabilitet, skader)',
+    frequency: 'Årlig',
+    status: null,
+    notes: '',
+    imageRefs: [],
+    timestamp: '',
+    inspector: '',
+  },
+  // ... Legg til flere sjekkpunkter her
+];
 
 export default function Home() {
   const navigate = useNavigate();
@@ -51,7 +79,14 @@ export default function Home() {
     const checklist: Checklist = {
       id: Date.now().toString(),
       ...newChecklist,
-      items: [],
+      items: CHECKLIST_ITEMS.map(item => ({
+        ...item,
+        timestamp: new Date().toISOString(),
+        status: null,
+        notes: '',
+        imageRefs: [],
+        inspector: ''
+      })),
       status: 'draft',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
