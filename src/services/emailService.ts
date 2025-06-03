@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
+import { Buffer } from 'buffer';
 
 // Last inn miljøvariabler i utviklingsmiljø
 if (process.env.NODE_ENV !== 'production') {
@@ -85,7 +86,7 @@ class EmailService {
         });
 
         const chunks: Buffer[] = [];
-        doc.on('data', chunk => chunks.push(chunk));
+        doc.on('data', (chunk: Buffer) => chunks.push(chunk));
         doc.on('end', () => resolve(Buffer.concat(chunks)));
 
         // Header
