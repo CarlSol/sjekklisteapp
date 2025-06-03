@@ -588,6 +588,8 @@ export default function ChecklistView() {
           : undefined,
       };
 
+      setSelectedItem(updatedItem);
+
       const updatedItems = checklist.items.map((item) =>
         item.id === selectedItem.id ? updatedItem : item
       );
@@ -669,18 +671,6 @@ export default function ChecklistView() {
     }
   };
 
-  useEffect(() => {
-    if (showCamera) {
-      startCamera();
-    }
-    return () => {
-      if (videoRef && videoRef.srcObject) {
-        const stream = videoRef.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, [showCamera]);
-
   const handleImageCapture = async () => {
     if (!videoRef) return;
 
@@ -699,6 +689,8 @@ export default function ChecklistView() {
           ...selectedItem,
           imageRefs: [...selectedItem.imageRefs, imageData],
         };
+
+        setSelectedItem(updatedItem);
 
         const updatedItems = checklist.items.map((item) =>
           item.id === selectedItem.id ? updatedItem : item
@@ -719,6 +711,18 @@ export default function ChecklistView() {
       setCameraError('Kunne ikke ta bilde. Prøv igjen.');
     }
   };
+
+  useEffect(() => {
+    if (showCamera) {
+      startCamera();
+    }
+    return () => {
+      if (videoRef && videoRef.srcObject) {
+        const stream = videoRef.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [showCamera]);
 
   const handleDeleteImage = (imageIndex: number) => {
     if (selectedItem && checklist) {
@@ -986,15 +990,22 @@ export default function ChecklistView() {
                       ref={setVideoRef}
                       autoPlay
                       playsInline
-                      style={{ width: '100%', maxHeight: '300px' }}
+                      style={{ 
+                        width: '100%', 
+                        maxHeight: '300px',
+                        backgroundColor: '#000',
+                        borderRadius: '4px'
+                      }}
                     />
-                    <Button
-                      variant="contained"
-                      onClick={handleImageCapture}
-                      sx={{ mt: 1 }}
-                    >
-                      Ta bilde
-                    </Button>
+                    <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center' }}>
+                      <Button
+                        variant="contained"
+                        onClick={handleImageCapture}
+                        sx={{ mt: 1 }}
+                      >
+                        Ta bilde
+                      </Button>
+                    </Box>
                   </>
                 )}
               </Box>
