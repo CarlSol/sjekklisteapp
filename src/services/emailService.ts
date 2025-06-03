@@ -21,39 +21,61 @@ export interface EmailData {
 }
 
 export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
-  const doc = new jsPDF();
-  
-  // Tittel
-  doc.setFontSize(16);
-  doc.text(`Sjekkliste - ${checklist.solparkName}`, 14, 20);
-  doc.setFontSize(12);
-  doc.text(`Område ${checklist.areaNumber}`, 14, 30);
-  
-  // Metadata
-  doc.setFontSize(10);
-  doc.text(`Dato: ${new Date().toLocaleDateString('nb-NO')}`, 14, 40);
-  doc.text(`Inspektør: ${checklist.inspectors.join(', ')}`, 14, 45);
-  
-  // Tabell
-  const tableData = checklist.items.map((item: ChecklistItem) => [
-    item.id,
-    item.checkPoint,
-    item.status || 'Ikke sjekket',
-    item.notes || '',
-    item.timestamp ? new Date(item.timestamp).toLocaleString('nb-NO') : ''
-  ]);
-  
-  (doc as any).autoTable({
-    startY: 50,
-    head: [['ID', 'Sjekkpunkt', 'Status', 'Notater', 'Tidspunkt']],
-    body: tableData,
-    theme: 'grid',
-    styles: { fontSize: 8 },
-    headStyles: { fillColor: [41, 128, 185] }
-  });
-  
-  // Konverter til Blob
-  return new Blob([doc.output('blob')], { type: 'application/pdf' });
+  try {
+    console.log('Starter PDF-generering for sjekkliste:', checklist.id);
+    
+    // Valider input
+    if (!checklist || !checklist.items || checklist.items.length === 0) {
+      throw new Error('Ugyldig sjekkliste: Mangler data eller sjekkpunkter');
+    }
+
+    // Opprett PDF-dokument
+    const doc = new jsPDF();
+    
+    // Tittel
+    doc.setFontSize(16);
+    doc.text(`Sjekkliste - ${checklist.solparkName || 'Ukjent solpark'}`, 14, 20);
+    doc.setFontSize(12);
+    doc.text(`Område ${checklist.areaNumber || 'Ukjent'}`, 14, 30);
+    
+    // Metadata
+    doc.setFontSize(10);
+    doc.text(`Dato: ${new Date().toLocaleDateString('nb-NO')}`, 14, 40);
+    doc.text(`Inspektør: ${checklist.inspectors?.join(', ') || 'Ikke spesifisert'}`, 14, 45);
+    
+    // Tabell
+    const tableData = checklist.items.map((item: ChecklistItem) => [
+      item.id || '',
+      item.checkPoint || '',
+      item.status || 'Ikke sjekket',
+      item.notes || '',
+      item.timestamp ? new Date(item.timestamp).toLocaleString('nb-NO') : ''
+    ]);
+    
+    // Legg til tabell
+    (doc as any).autoTable({
+      startY: 50,
+      head: [['ID', 'Sjekkpunkt', 'Status', 'Notater', 'Tidspunkt']],
+      body: tableData,
+      theme: 'grid',
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [41, 128, 185] },
+      margin: { top: 50 }
+    });
+    
+    // Konverter til Blob
+    const pdfOutput = doc.output('blob');
+    console.log('PDF generert med størrelse:', pdfOutput.size);
+    
+    if (!pdfOutput || pdfOutput.size === 0) {
+      throw new Error('PDF-generering feilet: Tomt dokument');
+    }
+    
+    return pdfOutput;
+  } catch (error) {
+    console.error('Feil ved PDF-generering:', error);
+    throw new Error(`Kunne ikke generere PDF: ${error instanceof Error ? error.message : 'Ukjent feil'}`);
+  }
 };
 
 export const generateEmailContent = (items: ChecklistItem[]): { text: string; html: string } => {

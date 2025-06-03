@@ -838,9 +838,16 @@ export default function ChecklistView() {
       setIsSendingEmail(true);
       
       // Generer PDF
+      console.log('Starter PDF-generering...');
       const pdfBlob = await generatePDF(checklist);
+      console.log('PDF generert:', pdfBlob);
+      
+      if (!pdfBlob || pdfBlob.size === 0) {
+        throw new Error('PDF-generering feilet: Tomt dokument');
+      }
       
       // Last ned PDF-filen
+      console.log('Starter PDF-nedlasting...');
       const pdfUrl = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = pdfUrl;
@@ -849,12 +856,15 @@ export default function ChecklistView() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(pdfUrl);
+      console.log('PDF nedlastet');
       
       // Lag e-postinnhold
+      console.log('Genererer e-postinnhold...');
       const { text } = generateEmailContent(checklist.items);
       const subject = `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`;
       
       // Åpne standard e-postklient
+      console.log('Åpner e-postklient...');
       const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
       window.open(mailtoLink, '_blank');
       
@@ -864,10 +874,10 @@ export default function ChecklistView() {
         severity: 'info'
       });
     } catch (error) {
-      console.error('Feil ved generering av e-post:', error);
+      console.error('Detaljert feil ved generering av e-post:', error);
       setSnackbar({
         open: true,
-        message: 'Kunne ikke generere e-post. Vennligst prøv igjen senere.',
+        message: error instanceof Error ? error.message : 'Kunne ikke generere e-post. Vennligst prøv igjen senere.',
         severity: 'error'
       });
     } finally {
