@@ -846,11 +846,6 @@ export default function ChecklistView() {
         throw new Error('PDF-generering feilet: Tomt dokument');
       }
       
-      // Lag e-postinnhold
-      console.log('Genererer e-postinnhold...');
-      const { text } = generateEmailContent(checklist.items);
-      const subject = `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`;
-      
       // Lag en midlertidig URL for PDF-filen
       const pdfUrl = URL.createObjectURL(pdfBlob);
       
@@ -864,19 +859,23 @@ export default function ChecklistView() {
       link.click();
       document.body.removeChild(link);
       
-      // Åpne standard e-postklient med instruksjoner
-      const emailBody = `${text}\n\nVedlagt finner du PDF-rapporten med bilder. Vennligst legg til den nedlastede PDF-filen som vedlegg.`;
+      // Vent litt for å sikre at nedlastingen er startet
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Åpne standard e-postklient med minimal tekst
+      const subject = `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`;
+      const emailBody = 'Vedlagt finner du sjekklisten som PDF.';
       const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
       window.open(mailtoLink, '_blank');
       
       // Frigjør URL-en etter en kort forsinkelse
       setTimeout(() => {
         URL.revokeObjectURL(pdfUrl);
-      }, 1000);
+      }, 2000);
       
       setSnackbar({
         open: true,
-        message: 'E-postklient åpnet. Vennligst legg til den nedlastede PDF-filen som vedlegg.',
+        message: 'PDF lastet ned. Vennligst legg til den nedlastede PDF-filen som vedlegg i e-posten.',
         severity: 'info'
       });
     } catch (error) {

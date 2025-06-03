@@ -24,7 +24,31 @@ export interface EmailData {
 const loadImage = (base64Image: string): Promise<HTMLImageElement> => {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => resolve(img);
+    img.onload = () => {
+      // Sjekk EXIF-orientering
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(img);
+        return;
+      }
+
+      // Standard bredde og høyde
+      let width = img.width;
+      let height = img.height;
+
+      // Roter bildet basert på orientering
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Konverter tilbake til base64
+      const rotatedBase64 = canvas.toDataURL('image/jpeg');
+      const rotatedImg = new Image();
+      rotatedImg.onload = () => resolve(rotatedImg);
+      rotatedImg.onerror = reject;
+      rotatedImg.src = rotatedBase64;
+    };
     img.onerror = reject;
     img.src = base64Image;
   });
