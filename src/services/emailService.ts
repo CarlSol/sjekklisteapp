@@ -99,7 +99,9 @@ class EmailService {
            .font('Helvetica')
            .text(`Område: ${checklist.areaNumber}`)
            .text(`Dato: ${format(new Date(checklist.inspectionDate), 'dd. MMMM yyyy', { locale: nb })}`)
-           .text(`Inspektør: ${checklist.inspector}`)
+           .text(`Inspektør: ${checklist.inspectors.join(', ')}`)
+           .text(`Værforhold: ${checklist.weatherConditions}`)
+           .text(`Generell tilstand: ${checklist.generalCondition}`)
            .moveDown();
 
         // Sjekkliste-elementer
@@ -111,41 +113,37 @@ class EmailService {
         checklist.items.forEach((item, index) => {
           doc.fontSize(12)
              .font('Helvetica-Bold')
-             .text(`${index + 1}. ${item.description}`)
+             .text(`${index + 1}. ${item.checkPoint}`)
              .font('Helvetica')
-             .text(`Status: ${item.completed ? 'Fullført' : 'Ikke fullført'}`)
-             .text(`Kommentar: ${item.comment || 'Ingen kommentar'}`)
+             .text(`Kategori: ${item.category}`)
+             .text(`Frekvens: ${item.frequency}`)
+             .text(`Status: ${item.status || 'Ikke satt'}`)
+             .text(`Kommentar: ${item.notes || 'Ingen kommentar'}`)
              .moveDown();
 
           // Vis bilde hvis det finnes
-          if (item.image) {
-            doc.image(item.image, {
-              fit: [400, 300],
-              align: 'center'
+          if (item.imageRefs && item.imageRefs.length > 0) {
+            item.imageRefs.forEach(imageRef => {
+              doc.image(imageRef, {
+                fit: [400, 300],
+                align: 'center'
+              });
+              doc.moveDown();
             });
-            doc.moveDown();
+          }
+
+          // Vis koordinater hvis de finnes
+          if (item.coordinates) {
+            doc.text(`Koordinater: ${item.coordinates.latitude}, ${item.coordinates.longitude}`)
+               .moveDown();
           }
         });
-
-        // Koordinater
-        if (checklist.coordinates) {
-          doc.fontSize(14)
-             .font('Helvetica-Bold')
-             .text('Koordinater')
-             .moveDown()
-             .fontSize(12)
-             .font('Helvetica')
-             .text(`Latitude: ${checklist.coordinates.lat}`)
-             .text(`Longitude: ${checklist.coordinates.lng}`)
-             .moveDown();
-        }
 
         // Footer
         const footerText = `Generert ${format(new Date(), 'dd.MM.yyyy HH:mm', { locale: nb })}`;
         doc.fontSize(10)
            .text(footerText, {
-             align: 'center',
-             valign: 'bottom'
+             align: 'center'
            });
 
         doc.end();
