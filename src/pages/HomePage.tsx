@@ -11,13 +11,16 @@ export default function HomePage() {
   const [openLoadDialog, setOpenLoadDialog] = useState(false);
 
   useEffect(() => {
-    loadSavedChecklists();
+    const loadChecklists = async () => {
+      try {
+        const loadedChecklists = await storageService.getAllChecklists();
+        setSavedChecklists(loadedChecklists);
+      } catch (error) {
+        console.error('Feil ved lasting av sjekklister:', error);
+      }
+    };
+    loadChecklists();
   }, []);
-
-  const loadSavedChecklists = () => {
-    const checklists = storageService.getAllChecklists();
-    setSavedChecklists(checklists);
-  };
 
   const handleCreateNew = () => {
     navigate('/checklist/new');
@@ -28,9 +31,14 @@ export default function HomePage() {
     setOpenLoadDialog(false);
   };
 
-  const handleDeleteChecklist = (id: string) => {
-    storageService.deleteChecklist(id);
-    loadSavedChecklists();
+  const handleDeleteChecklist = async (id: string) => {
+    try {
+      await storageService.deleteChecklist(id);
+      const updatedChecklists = await storageService.getAllChecklists();
+      setSavedChecklists(updatedChecklists);
+    } catch (error) {
+      console.error('Feil ved sletting av sjekkliste:', error);
+    }
   };
 
   const formatDate = (dateString: string) => {

@@ -805,22 +805,22 @@ export default function ChecklistView() {
                   setDebugMessage('Bilde lagret!');
                   setShowCamera(false);
                 };
-                img.onerror = (error) => {
+                img.onerror = () => {
                   setDebugMessage('Feil ved lasting av bilde');
                   setShowCamera(false);
                 };
                 img.src = compressedImage;
-              } catch (error) {
+              } catch {
                 setDebugMessage('Feil ved komprimering av bilde');
                 setShowCamera(false);
               }
             };
-            reader.onerror = (error) => {
+            reader.onerror = () => {
               setDebugMessage('Feil ved lesing av fil');
               setShowCamera(false);
             };
             reader.readAsDataURL(file);
-          } catch (error) {
+          } catch {
             setDebugMessage('Feil ved prosessering av bilde');
             setShowCamera(false);
           }
@@ -841,7 +841,7 @@ export default function ChecklistView() {
 
       // Stopp strømmen etter at brukeren har valgt et bilde
       stream.getTracks().forEach(track => track.stop());
-    } catch (error) {
+    } catch {
       setDebugMessage('Kunne ikke få tilgang til kamera');
       setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
       setShowCamera(false);
@@ -991,28 +991,6 @@ export default function ChecklistView() {
   };
 
   const allItemsAnswered = checklist?.items.every(item => item.status !== null);
-
-  const handleSave = async () => {
-    if (!checklist) return;
-    try {
-      await storageService.saveChecklist(checklist);
-      setSnackbar({ open: true, message: 'Sjekkliste lagret', severity: 'success' });
-    } catch (error) {
-      console.error('Feil ved lagring av sjekkliste:', error);
-      setSnackbar({ open: true, message: 'Feil ved lagring av sjekkliste', severity: 'error' });
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!checklist) return;
-    try {
-      await storageService.deleteChecklist(checklist.id);
-      navigate('/');
-    } catch (error) {
-      console.error('Feil ved sletting av sjekkliste:', error);
-      setSnackbar({ open: true, message: 'Feil ved sletting av sjekkliste', severity: 'error' });
-    }
-  };
 
   if (!checklist) {
     return null;
