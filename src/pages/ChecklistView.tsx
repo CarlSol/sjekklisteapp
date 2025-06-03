@@ -775,9 +775,15 @@ export default function ChecklistView() {
 
   // Oppdater useEffect for kamera
   useEffect(() => {
-    if (showCamera) {
+    let mounted = true;
+    
+    if (showCamera && mounted) {
       handleImageCapture();
     }
+    
+    return () => {
+      mounted = false;
+    };
   }, [showCamera]);
 
   const handleCloseDialog = () => {
@@ -1070,9 +1076,10 @@ export default function ChecklistView() {
         onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
+        keepMounted={false}
       >
         <DialogTitle>
-          {selectedItem?.category} - {selectedItem?.checkPoint}
+          {selectedItem?.id} - {selectedItem?.category} - {selectedItem?.checkPoint}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
