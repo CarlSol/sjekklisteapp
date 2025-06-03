@@ -10,82 +10,12 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config();
 }
 
-// Konfigurer e-post-transport
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-});
-
-// Hjelpefunksjon for å generere PDF
-function generatePDF(checklist: Checklist): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument();
-    const chunks: Buffer[] = [];
-
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
-
-    // Legg til innhold i PDF
-    doc.fontSize(20).text('Sjekkliste Rapport', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Solpark: ${checklist.solparkName}`);
-    doc.text(`Område: ${checklist.areaNumber}`);
-    doc.text(`Dato: ${new Date(checklist.inspectionDate).toLocaleDateString()}`);
-    doc.moveDown();
-
-    // Legg til sjekkpunkter
-    checklist.items.forEach((item) => {
-      doc.text(`Kategori: ${item.category}`);
-      doc.text(`Sjekkpunkt: ${item.checkPoint}`);
-      doc.text(`Status: ${item.status || 'Ikke sjekket'}`);
-      if (item.notes) {
-        doc.text(`Notater: ${item.notes}`);
-      }
-      doc.moveDown();
-    });
-
-    doc.end();
-  });
-}
-
-// Hovedfunksjon for å sende e-post
-export async function sendChecklistReport(checklist: Checklist): Promise<boolean> {
-  try {
-    const pdfBuffer = await generatePDF(checklist);
-
-    const mailOptions = {
-      from: process.env.EMAIL_FROM,
-      to: process.env.EMAIL_TO,
-      subject: `Sjekkliste Rapport - ${checklist.solparkName} Område ${checklist.areaNumber}`,
-      text: `Vedlagt finner du sjekkliste rapport for ${checklist.solparkName} Område ${checklist.areaNumber}.`,
-      attachments: [
-        {
-          filename: `sjekkliste_${checklist.areaNumber}_${new Date().toISOString().split('T')[0]}.pdf`,
-          content: pdfBuffer,
-        },
-      ],
-    };
-
-    await transporter.sendMail(mailOptions);
-    return true;
-  } catch (error) {
-    console.error('Feil ved sending av e-post:', error);
-    return false;
-  }
-}
-
 class EmailService {
   private transporter: nodemailer.Transporter;
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
       secure: process.env.SMTP_PORT === '465',
       auth: {
@@ -179,10 +109,40 @@ class EmailService {
       }
     });
   }
+
+  public async sendChecklistReport(checklist: Checklist): Promise<boolean> {
+    try {
+      const pdfBuffer = await this.generateReportPDF(checklist);
+
+      const mailOptions = {
+        from: process.env.EMAIL_FROM,
+        to: process.env.EMAIL_TO,
+        subject: `Sjekkliste Rapport - ${checklist.solparkName} Område ${checklist.areaNumber}`,
+        text: `Vedlagt finner du sjekkliste rapport for ${checklist.solparkName} Område ${checklist.areaNumber}.`,
+        attachments: [
+          {
+            filename: `sjekkliste_${checklist.areaNumber}_${new Date().toISOString().split('T')[0]}.pdf`,
+            content: pdfBuffer,
+          },
+        ],
+      };
+
+      await this.transporter.sendMail(mailOptions);
+      return true;
+    } catch (error) {
+      console.error('Feil ved sending av e-post:', error);
+      return false;
+    }
+  }
 }
 
 // Opprett en singleton-instans
 const emailService = new EmailService();
+
+// Eksporter funksjoner
+export async function sendChecklistReport(checklist: Checklist): Promise<boolean> {
+  return emailService.sendChecklistReport(checklist);
+}
 
 export async function generateReportPDF(checklist: Checklist): Promise<Buffer> {
   return emailService.generateReportPDF(checklist);
