@@ -6,13 +6,7 @@ import {
   TextField,
   Button,
   Box,
-  Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  OutlinedInput
+  Paper
 } from '@mui/material';
 import { v4 as uuidv4 } from 'uuid';
 import { storageService } from '../services/storageService';

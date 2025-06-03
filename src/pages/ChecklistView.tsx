@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Container,
   Typography,
@@ -9,7 +9,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemSecondaryAction,
   IconButton,
   Dialog,
   DialogTitle,
@@ -26,10 +25,9 @@ import {
   CardMedia,
   Tooltip,
   Snackbar,
-  Alert,
-  CircularProgress
+  Alert
 } from '@mui/material';
-import { PhotoCamera, LocationOn, Email as EmailIcon } from '@mui/icons-material';
+import { PhotoCamera, Email as EmailIcon } from '@mui/icons-material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
