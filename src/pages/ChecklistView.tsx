@@ -1016,7 +1016,7 @@ export default function ChecklistView() {
                 <ListItemText
                   primary={
                     <Typography variant="subtitle1" color="primary">
-                      {item.category}
+                      {item.id} - {item.category}
                     </Typography>
                   }
                   secondary={
