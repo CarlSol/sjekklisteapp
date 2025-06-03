@@ -51,8 +51,26 @@ export const sendChecklistEmail = async (emailData: EmailData): Promise<void> =>
       subject: msg.subject,
     });
 
-    await sgMail.send(msg);
-    console.log('E-post sendt vellykket');
+    try {
+      await sgMail.send(msg);
+      console.log('E-post sendt vellykket');
+    } catch (sendError: any) {
+      console.error('SendGrid API feil:', {
+        statusCode: sendError.code,
+        message: sendError.message,
+        response: sendError.response?.body
+      });
+      
+      if (sendError.code === 401) {
+        throw new Error('Ugyldig API-nøkkel. Vennligst sjekk SendGrid API-nøkkelen.');
+      } else if (sendError.code === 403) {
+        throw new Error('Ingen tilgang til SendGrid API. Vennligst sjekk API-nøkkelens tillatelser.');
+      } else if (sendError.code === 429) {
+        throw new Error('For mange forespørsler. Vennligst prøv igjen senere.');
+      } else {
+        throw new Error(`SendGrid API feil: ${sendError.message}`);
+      }
+    }
   } catch (error) {
     console.error('Detaljert feil ved sending av e-post:', error);
     if (error instanceof Error) {

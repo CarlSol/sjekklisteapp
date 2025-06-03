@@ -837,6 +837,8 @@ export default function ChecklistView() {
     try {
       setIsSendingEmail(true);
       const { text, html } = generateEmailContent(checklist.items);
+      
+      console.log('Starter e-postsending...');
       await sendChecklistEmail({
         to: '',
         subject: `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`,
@@ -844,6 +846,8 @@ export default function ChecklistView() {
         html,
         checklistItems: checklist.items
       });
+      
+      console.log('E-post sendt vellykket');
       setSnackbar({
         open: true,
         message: 'E-post sendt vellykket!',
@@ -851,9 +855,15 @@ export default function ChecklistView() {
       });
     } catch (error) {
       console.error('Feil ved sending av e-post:', error);
+      let errorMessage = 'Kunne ikke sende e-post. Vennligst prøv igjen senere.';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
       setSnackbar({
         open: true,
-        message: error instanceof Error ? error.message : 'Kunne ikke sende e-post. Vennligst prøv igjen senere.',
+        message: errorMessage,
         severity: 'error'
       });
     } finally {
