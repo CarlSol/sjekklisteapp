@@ -704,8 +704,10 @@ export default function ChecklistView() {
   };
 
   const handleImageCapture = async () => {
+    console.log('Starter handleImageCapture');
     try {
       // Be om tilgang til kameraet
+      console.log('Ber om kamera-tilgang');
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
           facingMode: 'environment',
@@ -713,6 +715,7 @@ export default function ChecklistView() {
           height: { ideal: 1080 }
         } 
       });
+      console.log('Kamera-tilgang gitt');
 
       // Opprett et input element av type file
       const input = document.createElement('input');
@@ -722,45 +725,57 @@ export default function ChecklistView() {
 
       // Håndter når brukeren har valgt et bilde
       input.onchange = async (e) => {
+        console.log('Input onchange trigget');
         const file = (e.target as HTMLInputElement).files?.[0];
+        console.log('Fil valgt:', file ? 'Ja' : 'Nei');
+        
         if (file && selectedItem && checklist) {
+          console.log('Starter prosessering av bilde');
           try {
             // Konverter bildet til base64
             const reader = new FileReader();
             reader.onload = (event) => {
+              console.log('FileReader onload trigget');
               const imageData = event.target?.result as string;
+              console.log('Bilde konvertert til base64');
               
               // Opprett et midlertidig bilde for å validere at bildet er gyldig
               const img = new Image();
               img.onload = () => {
+                console.log('Bilde validert og lastet');
                 const updatedItem = {
                   ...selectedItem,
                   imageRefs: [...selectedItem.imageRefs, imageData],
                 };
+                console.log('Oppdatert item med nytt bilde');
 
                 setSelectedItem(updatedItem);
 
                 const updatedItems = checklist.items.map((item) =>
                   item.id === selectedItem.id ? updatedItem : item
                 );
+                console.log('Oppdatert items array');
 
                 const updatedChecklist = {
                   ...checklist,
                   items: updatedItems,
                   updatedAt: new Date().toISOString(),
                 };
+                console.log('Oppdatert checklist');
 
                 setChecklist(updatedChecklist);
+                console.log('Sjekkliste oppdatert i state');
                 setShowCamera(false);
+                console.log('Kamera-tilstand resatt');
               };
-              img.onerror = () => {
-                console.error('Feil ved lasting av bilde');
+              img.onerror = (error) => {
+                console.error('Feil ved lasting av bilde:', error);
                 setShowCamera(false);
               };
               img.src = imageData;
             };
-            reader.onerror = () => {
-              console.error('Feil ved lesing av fil');
+            reader.onerror = (error) => {
+              console.error('Feil ved lesing av fil:', error);
               setShowCamera(false);
             };
             reader.readAsDataURL(file);
@@ -769,21 +784,24 @@ export default function ChecklistView() {
             setShowCamera(false);
           }
         } else {
-          // Hvis brukeren avbryter eller ingen fil er valgt
+          console.log('Ingen fil valgt eller manglende data');
           setShowCamera(false);
         }
       };
 
       // Håndter når brukeren avbryter
       input.oncancel = () => {
+        console.log('Bruker avbrøt kamera');
         setShowCamera(false);
       };
 
       // Åpne kameraet
+      console.log('Åpner kamera');
       input.click();
 
       // Stopp strømmen etter at brukeren har valgt et bilde
       stream.getTracks().forEach(track => track.stop());
+      console.log('Kamera-strøm stoppet');
     } catch (error) {
       console.error('Error accessing camera:', error);
       setCameraError('Kunne ikke få tilgang til kamera. Vennligst tillat kameratilgang i nettleserinnstillingene.');
@@ -794,17 +812,21 @@ export default function ChecklistView() {
   // Oppdater useEffect for kamera
   useEffect(() => {
     let mounted = true;
+    console.log('Kamera useEffect trigget, showCamera:', showCamera);
     
     if (showCamera && mounted) {
+      console.log('Starter handleImageCapture fra useEffect');
       handleImageCapture();
     }
     
     return () => {
+      console.log('Cleanup i kamera useEffect');
       mounted = false;
     };
   }, [showCamera]);
 
   const handleCloseDialog = () => {
+    console.log('Lukker dialog');
     setOpenDialog(false);
     setShowCamera(false);
     setCameraError(null);
