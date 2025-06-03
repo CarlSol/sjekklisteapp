@@ -920,27 +920,27 @@ export default function ChecklistView() {
         <Typography variant="h4" component="h1">
           Sjekkliste - Område {checklist.areaNumber}
         </Typography>
-        <Box sx={{ ml: 'auto', display: 'flex', gap: 2 }}>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={handleExport}
+          startIcon={<DownloadIcon />}
+        >
+          Eksporter
+        </Button>
+        {allItemsAnswered && (
           <Button
-            variant="outlined"
+            variant="contained"
             color="primary"
-            onClick={handleExport}
-            startIcon={<DownloadIcon />}
+            startIcon={<EmailIcon />}
+            onClick={handleSendEmail}
+            disabled={isSendingEmail}
           >
-            Eksporter
+            {isSendingEmail ? 'Sender...' : 'Send E-post'}
           </Button>
-          {allItemsAnswered && (
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<EmailIcon />}
-              onClick={handleSendEmail}
-              disabled={isSendingEmail}
-            >
-              {isSendingEmail ? 'Sender...' : 'Send E-post'}
-            </Button>
-          )}
-        </Box>
+        )}
       </Box>
 
       <Paper sx={{ p: 3, mb: 3 }}>
