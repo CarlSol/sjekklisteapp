@@ -23,7 +23,18 @@ interface EmailData {
 export const sendChecklistEmail = async (emailData: EmailData): Promise<void> => {
   try {
     if (!SENDGRID_API_KEY) {
-      throw new Error('SendGrid API-nøkkel er ikke konfigurert');
+      console.error('SendGrid API-nøkkel mangler. Sjekk at VITE_SENDGRID_API_KEY er satt i .env-filen.');
+      throw new Error('SendGrid API-nøkkel er ikke konfigurert. Vennligst kontakt administrator.');
+    }
+
+    if (!EMAIL_FROM) {
+      console.error('Avsender-e-post mangler. Sjekk at VITE_EMAIL_FROM er satt i .env-filen.');
+      throw new Error('Avsender-e-post er ikke konfigurert. Vennligst kontakt administrator.');
+    }
+
+    if (!EMAIL_TO) {
+      console.error('Mottaker-e-post mangler. Sjekk at VITE_EMAIL_TO er satt i .env-filen.');
+      throw new Error('Mottaker-e-post er ikke konfigurert. Vennligst kontakt administrator.');
     }
 
     const msg = {
@@ -34,9 +45,19 @@ export const sendChecklistEmail = async (emailData: EmailData): Promise<void> =>
       html: emailData.html,
     };
 
+    console.log('Forsøker å sende e-post med følgende data:', {
+      to: msg.to,
+      from: msg.from,
+      subject: msg.subject,
+    });
+
     await sgMail.send(msg);
+    console.log('E-post sendt vellykket');
   } catch (error) {
-    console.error('Feil ved sending av e-post:', error);
+    console.error('Detaljert feil ved sending av e-post:', error);
+    if (error instanceof Error) {
+      throw new Error(`Kunne ikke sende e-post: ${error.message}`);
+    }
     throw new Error('Kunne ikke sende e-post. Vennligst prøv igjen senere.');
   }
 };

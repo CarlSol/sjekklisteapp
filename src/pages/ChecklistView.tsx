@@ -844,10 +844,18 @@ export default function ChecklistView() {
         html,
         checklistItems: checklist.items
       });
-      alert('E-post sendt!');
+      setSnackbar({
+        open: true,
+        message: 'E-post sendt vellykket!',
+        severity: 'success'
+      });
     } catch (error) {
       console.error('Feil ved sending av e-post:', error);
-      alert('Kunne ikke sende e-post. Vennligst prøv igjen senere.');
+      setSnackbar({
+        open: true,
+        message: error instanceof Error ? error.message : 'Kunne ikke sende e-post. Vennligst prøv igjen senere.',
+        severity: 'error'
+      });
     } finally {
       setIsSendingEmail(false);
     }
