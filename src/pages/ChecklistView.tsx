@@ -592,13 +592,6 @@ export default function ChecklistView() {
     }
   }, [id, navigate]);
 
-  useEffect(() => {
-    if (checklist) {
-      // Lagre sjekkliste automatisk når den endres
-      storageService.saveChecklist(checklist);
-    }
-  }, [checklist]);
-
   const handleItemClick = async (item: ChecklistItem) => {
     setSelectedItem(item);
     setOpenDialog(true);
@@ -654,7 +647,6 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      storageService.saveChecklist(updatedChecklist);
     }
   };
 
@@ -676,7 +668,6 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      storageService.saveChecklist(updatedChecklist);
     }
   };
 
@@ -700,7 +691,6 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      storageService.saveChecklist(updatedChecklist);
     }
   };
 
@@ -748,7 +738,6 @@ export default function ChecklistView() {
             };
 
             setChecklist(updatedChecklist);
-            storageService.saveChecklist(updatedChecklist);
             setShowCamera(false);
           };
           reader.readAsDataURL(file);
@@ -791,7 +780,6 @@ export default function ChecklistView() {
       };
 
       setChecklist(updatedChecklist);
-      storageService.saveChecklist(updatedChecklist);
     }
   };
 
@@ -861,17 +849,25 @@ export default function ChecklistView() {
         <Typography variant="h4" component="h1">
           Sjekkliste - Område {checklist.areaNumber}
         </Typography>
-        {allItemsAnswered && (
+        <Box sx={{ ml: 'auto', display: 'flex', gap: 2 }}>
           <Button
-            variant="contained"
+            variant="outlined"
             color="primary"
-            startIcon={<EmailIcon />}
-            onClick={handleSendReport}
-            sx={{ ml: 'auto' }}
+            onClick={handleSave}
           >
-            Send Rapport
+            Lagre
           </Button>
-        )}
+          {allItemsAnswered && (
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<EmailIcon />}
+              onClick={handleSendReport}
+            >
+              Send Rapport
+            </Button>
+          )}
+        </Box>
       </Box>
 
       <Paper sx={{ p: 3, mb: 3 }}>
@@ -1117,6 +1113,20 @@ export default function ChecklistView() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity as 'success' | 'error'}
+          sx={{ width: '100%' }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 } 
