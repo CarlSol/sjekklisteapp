@@ -859,8 +859,8 @@ export default function ChecklistView() {
       link.click();
       document.body.removeChild(link);
       
-      // Vent litt for å sikre at nedlastingen er startet
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Vent minst 10 sekunder for å sikre at nedlastingen er ferdig før e-postvindu åpnes
+      await new Promise(resolve => setTimeout(resolve, 10000));
       
       // Åpne standard e-postklient med minimal tekst
       const subject = `Sjekkliste - ${checklist.solparkName} Område ${checklist.areaNumber}`;
