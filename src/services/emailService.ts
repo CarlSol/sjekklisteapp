@@ -1,9 +1,16 @@
 import type { ChecklistItem } from '../types/Checklist';
 import { format } from 'date-fns';
 import { nb } from 'date-fns/locale';
+import sgMail from '@sendgrid/mail';
 
-// Konfigurasjon for e-post-tjenesten
-const EMAIL_SERVICE_URL = import.meta.env.VITE_EMAIL_SERVICE_URL || 'http://localhost:3001/api/email';
+// Konfigurasjon for SendGrid
+const SENDGRID_API_KEY = import.meta.env.VITE_SENDGRID_API_KEY;
+const EMAIL_FROM = import.meta.env.VITE_EMAIL_FROM;
+const EMAIL_TO = import.meta.env.VITE_EMAIL_TO;
+
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
+}
 
 interface EmailData {
   to: string;
@@ -15,17 +22,19 @@ interface EmailData {
 
 export const sendChecklistEmail = async (emailData: EmailData): Promise<void> => {
   try {
-    const response = await fetch(EMAIL_SERVICE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(emailData),
-    });
-
-    if (!response.ok) {
-      throw new Error(`E-post-tjenesten svarte med status ${response.status}`);
+    if (!SENDGRID_API_KEY) {
+      throw new Error('SendGrid API-nøkkel er ikke konfigurert');
     }
+
+    const msg = {
+      to: emailData.to || EMAIL_TO,
+      from: EMAIL_FROM,
+      subject: emailData.subject,
+      text: emailData.text,
+      html: emailData.html,
+    };
+
+    await sgMail.send(msg);
   } catch (error) {
     console.error('Feil ved sending av e-post:', error);
     throw new Error('Kunne ikke sende e-post. Vennligst prøv igjen senere.');
