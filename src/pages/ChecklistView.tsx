@@ -553,7 +553,14 @@ export default function ChecklistView() {
           inspectors: [],
           weatherConditions: '',
           generalCondition: '',
-          items: CHECKLIST_ITEMS.map(item => ({ ...item, timestamp: new Date().toISOString() })),
+          items: CHECKLIST_ITEMS.map(item => ({
+            ...item,
+            timestamp: new Date().toISOString(),
+            status: null,
+            notes: '',
+            imageRefs: [],
+            inspector: ''
+          })),
           status: 'draft',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
