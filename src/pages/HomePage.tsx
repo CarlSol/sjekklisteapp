@@ -18,7 +18,6 @@ import AddIcon from '@mui/icons-material/Add';
 import { useNavigate } from 'react-router-dom';
 import { storageService } from '../services/storageService';
 import type { Checklist } from '../types/Checklist';
-import { CHECKLIST_ITEMS } from '../constants/checklistItems';
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
