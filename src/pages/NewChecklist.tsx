@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Container,
@@ -8,35 +8,49 @@ import {
   Box,
   Paper
 } from '@mui/material';
-import { v4 as uuidv4 } from 'uuid';
 import { storageService } from '../services/storageService';
 import type { Checklist } from '../types/Checklist';
+import { CHECKLIST_ITEMS } from '../constants/checklistItems';
 
 export default function NewChecklist() {
   const navigate = useNavigate();
-  const [solparkName, setSolparkName] = useState('Furuseth Solpark');
+  const [solparkName, setSolparkName] = useState('');
   const [areaNumber, setAreaNumber] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!solparkName || !areaNumber) {
+      alert('Vennligst fyll ut alle felt');
+      return;
+    }
 
-    const newChecklist: Checklist = {
-      id: uuidv4(),
-      title: `${solparkName} - Område ${areaNumber}`,
-      solparkName,
-      areaNumber,
-      inspectionDate: new Date().toISOString().split('T')[0],
-      inspectors: [],
-      items: [],
-      status: 'draft',
-      timestamp: new Date().toISOString(),
-      inspector: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const newChecklist: Checklist = {
+        id: Date.now().toString(),
+        title: `${solparkName} - Område ${areaNumber}`,
+        solparkName,
+        areaNumber,
+        inspectionDate: new Date().toISOString(),
+        inspectors: [],
+        items: CHECKLIST_ITEMS.map(item => ({
+          ...item,
+          status: null,
+          notes: '',
+          images: [],
+          timestamp: '',
+          inspectors: [],
+          completed: false
+        })),
+        timestamp: new Date().toISOString()
+      };
 
-    storageService.saveChecklist(newChecklist);
-    navigate(`/checklist/${newChecklist.id}`);
+      await storageService.saveChecklist(newChecklist);
+      navigate(`/checklist/${newChecklist.id}`);
+    } catch (error) {
+      console.error('Feil ved opprettelse av sjekkliste:', error);
+      alert('Kunne ikke opprette sjekkliste. Vennligst prøv igjen.');
+    }
   };
 
   return (
@@ -53,6 +67,7 @@ export default function NewChecklist() {
               value={solparkName}
               onChange={(e) => setSolparkName(e.target.value)}
               margin="normal"
+              required
             />
             <TextField
               fullWidth
@@ -60,6 +75,7 @@ export default function NewChecklist() {
               value={areaNumber}
               onChange={(e) => setAreaNumber(e.target.value)}
               margin="normal"
+              required
             />
             <Button
               type="submit"

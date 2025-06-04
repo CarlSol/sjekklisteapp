@@ -18,10 +18,10 @@ export interface ChecklistItem {
 
 export interface Checklist {
   id: string;
-  title: string;
+  title?: string;
   items: ChecklistItem[];
   timestamp: string;
-  inspector: string;
+  inspector?: string;
   status?: 'draft' | 'completed' | 'sent';
   solparkName?: string;
   areaNumber?: string;
