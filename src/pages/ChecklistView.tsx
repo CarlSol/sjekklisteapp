@@ -24,19 +24,18 @@ import {
   MenuItem,
   Chip,
 } from '@mui/material';
-import { PhotoCamera, Email as EmailIcon, Download as DownloadIcon, Delete as DeleteIcon, LocationOn as LocationIcon, Save as SaveIcon } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { PhotoCamera, Download as DownloadIcon, Delete as DeleteIcon, LocationOn as LocationIcon, Save as SaveIcon } from '@mui/icons-material';
+import { useParams } from 'react-router-dom';
 import { storageService } from '../services/storageService';
 import { generatePDF } from '../services/emailService';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
 
 const ChecklistView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [selectedItem, setSelectedItem] = useState<ChecklistItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editedStatus, setEditedStatus] = useState<string | null>(null);
+  const [editedStatus, setEditedStatus] = useState<'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null>(null);
   const [editedNotes, setEditedNotes] = useState('');
 
   useEffect(() => {
@@ -54,7 +53,7 @@ const ChecklistView: React.FC = () => {
   const handleItemClick = (item: ChecklistItem) => {
     setSelectedItem(item);
     setEditedNotes(item.notes || '');
-    setEditedStatus(item.status);
+    setEditedStatus(item.status as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null);
     setIsDialogOpen(true);
   };
 
@@ -97,7 +96,7 @@ const ChecklistView: React.FC = () => {
         updatedChecklist.items[itemIndex] = {
           ...updatedChecklist.items[itemIndex],
           notes: editedNotes,
-          status: editedStatus,
+          status: editedStatus as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null,
           timestamp: new Date().toISOString(),
           location: location,
           completed: editedStatus !== null
@@ -117,7 +116,7 @@ const ChecklistView: React.FC = () => {
         updatedChecklist.items[itemIndex] = {
           ...updatedChecklist.items[itemIndex],
           notes: editedNotes,
-          status: editedStatus,
+          status: editedStatus as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null,
           timestamp: new Date().toISOString(),
           completed: editedStatus !== null
         };

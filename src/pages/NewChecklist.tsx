@@ -50,7 +50,7 @@ export default function NewChecklist() {
     }
   };
 
-  const handleInspectorChange = (event: any, newValue: string[]) => {
+  const handleInspectorChange = (_event: any, newValue: string[]) => {
     setInspectors(newValue);
     // Lagre nye inspektører til cache
     newValue.forEach(inspector => saveInspectorToCache(inspector));
