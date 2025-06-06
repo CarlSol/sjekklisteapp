@@ -24,7 +24,7 @@ import {
   MenuItem,
   Chip,
 } from '@mui/material';
-import { PhotoCamera, Download as DownloadIcon, Delete as DeleteIcon, LocationOn as LocationIcon, Save as SaveIcon } from '@mui/icons-material';
+import { PhotoCamera, Download as DownloadIcon, Delete as DeleteIcon, LocationOn as LocationIcon, Save as SaveIcon, Add as AddIcon } from '@mui/icons-material';
 import { useParams } from 'react-router-dom';
 import { storageService } from '../services/storageService';
 import { generatePDF } from '../services/emailService';
@@ -37,6 +37,10 @@ const ChecklistView: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedStatus, setEditedStatus] = useState<'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null>(null);
   const [editedNotes, setEditedNotes] = useState('');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newItemCategory, setNewItemCategory] = useState('');
+  const [newItemText, setNewItemText] = useState('');
+  const [newItemFrequency, setNewItemFrequency] = useState('');
 
   useEffect(() => {
     const loadChecklist = async () => {
@@ -259,6 +263,80 @@ const ChecklistView: React.FC = () => {
     }
   };
 
+  // Funksjon for å finne neste nummer i en kategori
+  const getNextItemNumber = (category: string): string => {
+    if (!checklist?.items) return '1.1';
+    
+    const categoryItems = checklist.items.filter(item => item.category === category);
+    const categoryNumber = category.split('.')[0];
+    
+    const numbers = categoryItems
+      .map(item => {
+        const parts = item.id.split('.');
+        return parseInt(parts[1]) || 0;
+      })
+      .sort((a, b) => b - a);
+    
+    const nextNumber = numbers.length > 0 ? numbers[0] + 1 : 1;
+    return `${categoryNumber}.${nextNumber}`;
+  };
+
+  // Funksjon for å legge til nytt punkt
+  const handleAddNewItem = async () => {
+    if (!checklist || !newItemCategory || !newItemText.trim()) return;
+
+    try {
+      const newId = getNextItemNumber(newItemCategory);
+      const newItem: ChecklistItem = {
+        id: newId,
+        category: newItemCategory,
+        checkPoint: newItemText.trim(),
+        frequency: newItemFrequency || 'Ved behov',
+        status: null,
+        notes: '',
+        images: [],
+        timestamp: '',
+        inspectors: [],
+        text: newItemText.trim(),
+        completed: false
+      };
+
+      const updatedChecklist = {
+        ...checklist,
+        items: [...(checklist.items || []), newItem]
+      };
+
+      await storageService.saveChecklist(updatedChecklist);
+      setChecklist(updatedChecklist);
+      setIsAddDialogOpen(false);
+      setNewItemCategory('');
+      setNewItemText('');
+      setNewItemFrequency('');
+    } catch (error) {
+      console.error('Feil ved tillegging av nytt punkt:', error);
+      alert('Kunne ikke legge til nytt punkt. Vennligst prøv igjen.');
+    }
+  };
+
+  // Grupper punkter etter kategori for bedre visning
+  const groupedItems = React.useMemo(() => {
+    if (!checklist?.items) return {};
+    
+    return checklist.items.reduce((acc, item) => {
+      if (!acc[item.category]) {
+        acc[item.category] = [];
+      }
+      acc[item.category].push(item);
+      return acc;
+    }, {} as Record<string, ChecklistItem[]>);
+  }, [checklist?.items]);
+
+  // Få alle unike kategorier for dropdown
+  const categories = React.useMemo(() => {
+    if (!checklist?.items) return [];
+    return [...new Set(checklist.items.map(item => item.category))].sort();
+  }, [checklist?.items]);
+
   if (!checklist) {
     return (
       <Container>
@@ -313,52 +391,140 @@ const ChecklistView: React.FC = () => {
         </Box>
 
         <Paper sx={{ p: 2 }}>
-          <List>
-            {checklist.items?.map((item) => (
-              <React.Fragment key={item.id}>
-                <ListItem button onClick={() => handleItemClick(item)}>
-                  <ListItemText
-                    primary={item.checkPoint}
-                    secondary={
-                      <React.Fragment>
-                        <Typography component="span" variant="body2" color="text.primary">
-                          {item.category}
-                        </Typography>
-                        <br />
-                        {item.status && (
-                          <Chip 
-                            label={item.status} 
-                            color={getStatusColor(item.status) as any}
-                            size="small"
-                            sx={{ mr: 1, mt: 0.5 }}
-                          />
-                        )}
-                        {item.notes && (
-                          <Typography variant="body2" color="text.secondary">
-                            Notat: {item.notes}
-                          </Typography>
-                        )}
-                        {item.images && item.images.length > 0 && (
-                          <Typography variant="body2" color="text.secondary">
-                            Bilder: {item.images.length}
-                          </Typography>
-                        )}
-                        {item.location && (
-                          <Typography variant="body2" color="text.secondary">
-                            <LocationIcon fontSize="small" /> 
-                            GPS: {item.location.latitude.toFixed(6)}, {item.location.longitude.toFixed(6)}
-                          </Typography>
-                        )}
-                      </React.Fragment>
-                    }
-                  />
-                </ListItem>
-                <Divider />
-              </React.Fragment>
-            ))}
-          </List>
+          {Object.entries(groupedItems).map(([category, items]) => (
+            <Box key={category} sx={{ mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6" sx={{ flexGrow: 1 }}>
+                  {category}
+                </Typography>
+                <IconButton
+                  color="primary"
+                  onClick={() => {
+                    setNewItemCategory(category);
+                    setIsAddDialogOpen(true);
+                  }}
+                  size="small"
+                >
+                  <AddIcon />
+                </IconButton>
+              </Box>
+              <List>
+                {items.map((item) => (
+                  <React.Fragment key={item.id}>
+                    <ListItem button onClick={() => handleItemClick(item)}>
+                      <ListItemText
+                        primary={
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip 
+                              label={item.id} 
+                              size="small" 
+                              variant="outlined"
+                              sx={{ minWidth: '50px', fontWeight: 'bold' }}
+                            />
+                            <Typography variant="body1">
+                              {item.checkPoint}
+                            </Typography>
+                          </Box>
+                        }
+                        secondary={
+                          <React.Fragment>
+                            <Typography component="span" variant="body2" color="text.secondary">
+                              Frekvens: {item.frequency}
+                            </Typography>
+                            <br />
+                            {item.status && (
+                              <Chip 
+                                label={item.status} 
+                                color={getStatusColor(item.status) as any}
+                                size="small"
+                                sx={{ mr: 1, mt: 0.5 }}
+                              />
+                            )}
+                            {item.notes && (
+                              <Typography variant="body2" color="text.secondary">
+                                Notat: {item.notes}
+                              </Typography>
+                            )}
+                            {item.images && item.images.length > 0 && (
+                              <Typography variant="body2" color="text.secondary">
+                                Bilder: {item.images.length}
+                              </Typography>
+                            )}
+                            {item.location && (
+                              <Typography variant="body2" color="text.secondary">
+                                <LocationIcon fontSize="small" /> 
+                                GPS: {item.location.latitude.toFixed(6)}, {item.location.longitude.toFixed(6)}
+                              </Typography>
+                            )}
+                          </React.Fragment>
+                        }
+                      />
+                    </ListItem>
+                    <Divider />
+                  </React.Fragment>
+                ))}
+              </List>
+            </Box>
+          ))}
         </Paper>
       </Box>
+
+      {/* Dialog for å legge til nytt punkt */}
+      <Dialog open={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Legg til nytt sjekkpunkt</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Kategori</InputLabel>
+            <Select
+              value={newItemCategory}
+              onChange={(e) => setNewItemCategory(e.target.value)}
+              label="Kategori"
+            >
+              {categories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            label="Sjekkpunkt beskrivelse"
+            value={newItemText}
+            onChange={(e) => setNewItemText(e.target.value)}
+            margin="normal"
+            required
+          />
+          
+          <TextField
+            fullWidth
+            label="Frekvens"
+            value={newItemFrequency}
+            onChange={(e) => setNewItemFrequency(e.target.value)}
+            margin="normal"
+            placeholder="f.eks. Årlig, Halvårlig, Ved behov"
+          />
+          
+          {newItemCategory && (
+            <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+              Nytt punkt får nummer: {getNextItemNumber(newItemCategory)}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsAddDialogOpen(false)}>Avbryt</Button>
+          <Button 
+            onClick={handleAddNewItem} 
+            variant="contained"
+            disabled={!newItemCategory || !newItemText.trim()}
+          >
+            Legg til
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
