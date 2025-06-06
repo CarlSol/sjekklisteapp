@@ -88,8 +88,12 @@ const ChecklistView: React.FC = () => {
     if (!checklist || !selectedItem) return;
 
     try {
+      // Hent fersk sjekkliste-data for å sikre at vi har siste versjon
+      const currentChecklist = await storageService.getChecklistById(checklist.id);
+      if (!currentChecklist) return;
+
       const location = await getCurrentLocation();
-      const updatedChecklist = { ...checklist };
+      const updatedChecklist = { ...currentChecklist };
       const itemIndex = updatedChecklist.items?.findIndex(item => item.id === selectedItem.id) ?? -1;
       
       if (itemIndex !== -1 && updatedChecklist.items) {
@@ -105,25 +109,39 @@ const ChecklistView: React.FC = () => {
         await storageService.saveChecklist(updatedChecklist);
         setChecklist(updatedChecklist);
         setIsDialogOpen(false);
+      } else {
+        console.error('Kunne ikke finne punkt å oppdatere:', selectedItem.id);
+        alert('Kunne ikke lagre endringer. Punktet ble ikke funnet.');
       }
     } catch (error) {
       console.error('Feil ved lagring:', error);
       // Lagre uten koordinater hvis GPS feiler
-      const updatedChecklist = { ...checklist };
-      const itemIndex = updatedChecklist.items?.findIndex(item => item.id === selectedItem.id) ?? -1;
-      
-      if (itemIndex !== -1 && updatedChecklist.items) {
-        updatedChecklist.items[itemIndex] = {
-          ...updatedChecklist.items[itemIndex],
-          notes: editedNotes,
-          status: editedStatus as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null,
-          timestamp: new Date().toISOString(),
-          completed: editedStatus !== null
-        };
+      try {
+        const currentChecklist = await storageService.getChecklistById(checklist.id);
+        if (!currentChecklist) return;
 
-        await storageService.saveChecklist(updatedChecklist);
-        setChecklist(updatedChecklist);
-        setIsDialogOpen(false);
+        const updatedChecklist = { ...currentChecklist };
+        const itemIndex = updatedChecklist.items?.findIndex(item => item.id === selectedItem.id) ?? -1;
+        
+        if (itemIndex !== -1 && updatedChecklist.items) {
+          updatedChecklist.items[itemIndex] = {
+            ...updatedChecklist.items[itemIndex],
+            notes: editedNotes,
+            status: editedStatus as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null,
+            timestamp: new Date().toISOString(),
+            completed: editedStatus !== null
+          };
+
+          await storageService.saveChecklist(updatedChecklist);
+          setChecklist(updatedChecklist);
+          setIsDialogOpen(false);
+        } else {
+          console.error('Kunne ikke finne punkt å oppdatere (uten GPS):', selectedItem.id);
+          alert('Kunne ikke lagre endringer. Punktet ble ikke funnet.');
+        }
+      } catch (secondError) {
+        console.error('Kritisk feil ved lagring:', secondError);
+        alert('Kunne ikke lagre endringer. Vennligst prøv igjen.');
       }
     }
   };
@@ -132,9 +150,13 @@ const ChecklistView: React.FC = () => {
     if (!checklist || !selectedItem) return;
     
     try {
+      // Hent fersk sjekkliste-data
+      const currentChecklist = await storageService.getChecklistById(checklist.id);
+      if (!currentChecklist) return;
+
       const location = await getCurrentLocation();
       const imageData = await storageService.uploadImage(file);
-      const updatedChecklist = { ...checklist };
+      const updatedChecklist = { ...currentChecklist };
       const itemIndex = updatedChecklist.items?.findIndex(item => item.id === selectedItem.id) ?? -1;
       
       if (itemIndex !== -1 && updatedChecklist.items) {
@@ -157,8 +179,11 @@ const ChecklistView: React.FC = () => {
       console.error('Feil ved opplasting av bilde:', error);
       // Last opp uten koordinater hvis GPS feiler
       try {
+        const currentChecklist = await storageService.getChecklistById(checklist.id);
+        if (!currentChecklist) return;
+
         const imageData = await storageService.uploadImage(file);
-        const updatedChecklist = { ...checklist };
+        const updatedChecklist = { ...currentChecklist };
         const itemIndex = updatedChecklist.items?.findIndex(item => item.id === selectedItem.id) ?? -1;
         
         if (itemIndex !== -1 && updatedChecklist.items) {
@@ -182,7 +207,11 @@ const ChecklistView: React.FC = () => {
     if (!checklist || !selectedItem) return;
     
     try {
-      const updatedChecklist = { ...checklist };
+      // Hent fersk sjekkliste-data
+      const currentChecklist = await storageService.getChecklistById(checklist.id);
+      if (!currentChecklist) return;
+
+      const updatedChecklist = { ...currentChecklist };
       const itemIndex = updatedChecklist.items?.findIndex(item => item.id === selectedItem.id) ?? -1;
       
       if (itemIndex !== -1 && updatedChecklist.items) {
@@ -353,11 +382,14 @@ const ChecklistView: React.FC = () => {
       await storageService.saveChecklist(updatedChecklist);
       setChecklist(updatedChecklist);
       
-      // Åpne dialog for redigering av det nye punktet
-      setSelectedItem(newItem);
-      setEditedNotes('');
-      setEditedStatus(null);
-      setIsDialogOpen(true);
+      // Finn det nyopprettede punktet i den oppdaterte sjekklisten for riktig referanse
+      const savedNewItem = updatedChecklist.items?.find(item => item.id === newId);
+      if (savedNewItem) {
+        setSelectedItem(savedNewItem);
+        setEditedNotes(savedNewItem.notes || '');
+        setEditedStatus(savedNewItem.status);
+        setIsDialogOpen(true);
+      }
     } catch (error) {
       console.error('Feil ved tillegging av underpunkt:', error);
       alert('Kunne ikke legge til underpunkt. Vennligst prøv igjen.');
