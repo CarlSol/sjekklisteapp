@@ -37,10 +37,6 @@ const ChecklistView: React.FC = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editedStatus, setEditedStatus] = useState<'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null>(null);
   const [editedNotes, setEditedNotes] = useState('');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newItemCategory, setNewItemCategory] = useState('');
-  const [newItemText, setNewItemText] = useState('');
-  const [newItemFrequency, setNewItemFrequency] = useState('');
 
   useEffect(() => {
     const loadChecklist = async () => {
@@ -263,79 +259,138 @@ const ChecklistView: React.FC = () => {
     }
   };
 
-  // Funksjon for å finne neste nummer i en kategori
-  const getNextItemNumber = (category: string): string => {
-    if (!checklist?.items) return '1.1';
+  // Funksjon for å finne neste underpunkt-nummer
+  const getNextSubItemNumber = (parentId: string): string => {
+    if (!checklist?.items) return `${parentId}.1`;
     
-    const categoryItems = checklist.items.filter(item => item.category === category);
-    const categoryNumber = category.split('.')[0];
+    // Finn alle underpunkter til dette hovedpunktet
+    const subItems = checklist.items.filter(item => 
+      item.id.startsWith(parentId + '.') && 
+      item.id.split('.').length === parentId.split('.').length + 1
+    );
     
-    const numbers = categoryItems
-      .map(item => {
-        const parts = item.id.split('.');
-        return parseInt(parts[1]) || 0;
-      })
-      .sort((a, b) => b - a);
-    
-    const nextNumber = numbers.length > 0 ? numbers[0] + 1 : 1;
-    return `${categoryNumber}.${nextNumber}`;
+    if (subItems.length === 0) {
+      // Første underpunkt - konverter hovedpunkt til .1 og opprett .2
+      return `${parentId}.2`;
+    } else {
+      // Finn høyeste underpunkt-nummer og legg til 1
+      const numbers = subItems
+        .map(item => {
+          const parts = item.id.split('.');
+          return parseInt(parts[parts.length - 1]) || 0;
+        })
+        .sort((a, b) => b - a);
+      
+      const nextNumber = numbers[0] + 1;
+      return `${parentId}.${nextNumber}`;
+    }
   };
 
-  // Funksjon for å legge til nytt punkt
-  const handleAddNewItem = async () => {
-    if (!checklist || !newItemCategory || !newItemText.trim()) return;
+  // Funksjon for å konvertere hovedpunkt til underpunkt når første underpunkt opprettes
+  const convertToSubItem = async (originalItem: ChecklistItem) => {
+    if (!checklist) return;
+
+    const updatedChecklist = { ...checklist };
+    const itemIndex = updatedChecklist.items?.findIndex(item => item.id === originalItem.id) ?? -1;
+    
+    if (itemIndex !== -1 && updatedChecklist.items) {
+      // Endre ID til .1
+      updatedChecklist.items[itemIndex] = {
+        ...updatedChecklist.items[itemIndex],
+        id: `${originalItem.id}.1`
+      };
+      
+      await storageService.saveChecklist(updatedChecklist);
+      setChecklist(updatedChecklist);
+    }
+  };
+
+  // Funksjon for å legge til underpunkt
+  const handleAddSubItem = async (parentItem: ChecklistItem) => {
+    if (!checklist) return;
 
     try {
-      const newId = getNextItemNumber(newItemCategory);
+      // Sjekk om dette er første underpunkt
+      const hasSubItems = checklist.items?.some(item => 
+        item.id.startsWith(parentItem.id + '.') && 
+        item.id.split('.').length === parentItem.id.split('.').length + 1
+      );
+
+      let newId: string;
+      
+      if (!hasSubItems) {
+        // Første underpunkt - konverter hovedpunkt til .1 først
+        await convertToSubItem(parentItem);
+        newId = `${parentItem.id}.2`;
+      } else {
+        // Finn neste underpunkt-nummer
+        newId = getNextSubItemNumber(parentItem.id);
+      }
+
       const newItem: ChecklistItem = {
         id: newId,
-        category: newItemCategory,
-        checkPoint: newItemText.trim(),
-        frequency: newItemFrequency || 'Ved behov',
+        category: parentItem.category,
+        checkPoint: `${parentItem.checkPoint} (tilleggspunkt)`,
+        frequency: parentItem.frequency,
         status: null,
         notes: '',
         images: [],
         timestamp: '',
         inspectors: [],
-        text: newItemText.trim(),
+        text: `${parentItem.checkPoint} (tilleggspunkt)`,
         completed: false
       };
 
+      // Hent oppdatert sjekkliste (i tilfelle hovedpunktet ble konvertert)
+      const currentChecklist = await storageService.getChecklistById(checklist.id);
+      if (!currentChecklist) return;
+
       const updatedChecklist = {
-        ...checklist,
-        items: [...(checklist.items || []), newItem]
+        ...currentChecklist,
+        items: [...(currentChecklist.items || []), newItem]
       };
 
       await storageService.saveChecklist(updatedChecklist);
       setChecklist(updatedChecklist);
-      setIsAddDialogOpen(false);
-      setNewItemCategory('');
-      setNewItemText('');
-      setNewItemFrequency('');
+      
+      // Åpne dialog for redigering av det nye punktet
+      setSelectedItem(newItem);
+      setEditedNotes('');
+      setEditedStatus(null);
+      setIsDialogOpen(true);
     } catch (error) {
-      console.error('Feil ved tillegging av nytt punkt:', error);
-      alert('Kunne ikke legge til nytt punkt. Vennligst prøv igjen.');
+      console.error('Feil ved tillegging av underpunkt:', error);
+      alert('Kunne ikke legge til underpunkt. Vennligst prøv igjen.');
     }
   };
 
-  // Grupper punkter etter kategori for bedre visning
-  const groupedItems = React.useMemo(() => {
-    if (!checklist?.items) return {};
+  // Sorter punkter etter ID for riktig rekkefølge
+  const sortedItems = React.useMemo(() => {
+    if (!checklist?.items) return [];
     
-    return checklist.items.reduce((acc, item) => {
+    return [...checklist.items].sort((a, b) => {
+      const aParts = a.id.split('.').map(Number);
+      const bParts = b.id.split('.').map(Number);
+      
+      for (let i = 0; i < Math.max(aParts.length, bParts.length); i++) {
+        const aNum = aParts[i] || 0;
+        const bNum = bParts[i] || 0;
+        if (aNum !== bNum) return aNum - bNum;
+      }
+      return 0;
+    });
+  }, [checklist?.items]);
+
+  // Grupper sorterte punkter etter kategori
+  const groupedItems = React.useMemo(() => {
+    return sortedItems.reduce((acc, item) => {
       if (!acc[item.category]) {
         acc[item.category] = [];
       }
       acc[item.category].push(item);
       return acc;
     }, {} as Record<string, ChecklistItem[]>);
-  }, [checklist?.items]);
-
-  // Få alle unike kategorier for dropdown
-  const categories = React.useMemo(() => {
-    if (!checklist?.items) return [];
-    return [...new Set(checklist.items.map(item => item.category))].sort();
-  }, [checklist?.items]);
+  }, [sortedItems]);
 
   if (!checklist) {
     return (
@@ -393,21 +448,9 @@ const ChecklistView: React.FC = () => {
         <Paper sx={{ p: 2 }}>
           {Object.entries(groupedItems).map(([category, items]) => (
             <Box key={category} sx={{ mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                  {category}
-                </Typography>
-                <IconButton
-                  color="primary"
-                  onClick={() => {
-                    setNewItemCategory(category);
-                    setIsAddDialogOpen(true);
-                  }}
-                  size="small"
-                >
-                  <AddIcon />
-                </IconButton>
-              </Box>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                {category}
+              </Typography>
               <List>
                 {items.map((item) => (
                   <React.Fragment key={item.id}>
@@ -419,11 +462,25 @@ const ChecklistView: React.FC = () => {
                               label={item.id} 
                               size="small" 
                               variant="outlined"
-                              sx={{ minWidth: '50px', fontWeight: 'bold' }}
+                              sx={{ 
+                                minWidth: item.id.includes('.') && item.id.split('.').length > 2 ? '65px' : '50px', 
+                                fontWeight: 'bold' 
+                              }}
                             />
-                            <Typography variant="body1">
+                            <Typography variant="body1" sx={{ flexGrow: 1 }}>
                               {item.checkPoint}
                             </Typography>
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAddSubItem(item);
+                              }}
+                              sx={{ ml: 1 }}
+                            >
+                              <AddIcon fontSize="small" />
+                            </IconButton>
                           </Box>
                         }
                         secondary={
@@ -468,63 +525,6 @@ const ChecklistView: React.FC = () => {
           ))}
         </Paper>
       </Box>
-
-      {/* Dialog for å legge til nytt punkt */}
-      <Dialog open={isAddDialogOpen} onClose={() => setIsAddDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Legg til nytt sjekkpunkt</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Kategori</InputLabel>
-            <Select
-              value={newItemCategory}
-              onChange={(e) => setNewItemCategory(e.target.value)}
-              label="Kategori"
-            >
-              {categories.map((category) => (
-                <MenuItem key={category} value={category}>
-                  {category}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <TextField
-            fullWidth
-            multiline
-            rows={3}
-            label="Sjekkpunkt beskrivelse"
-            value={newItemText}
-            onChange={(e) => setNewItemText(e.target.value)}
-            margin="normal"
-            required
-          />
-          
-          <TextField
-            fullWidth
-            label="Frekvens"
-            value={newItemFrequency}
-            onChange={(e) => setNewItemFrequency(e.target.value)}
-            margin="normal"
-            placeholder="f.eks. Årlig, Halvårlig, Ved behov"
-          />
-          
-          {newItemCategory && (
-            <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
-              Nytt punkt får nummer: {getNextItemNumber(newItemCategory)}
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsAddDialogOpen(false)}>Avbryt</Button>
-          <Button 
-            onClick={handleAddNewItem} 
-            variant="contained"
-            disabled={!newItemCategory || !newItemText.trim()}
-          >
-            Legg til
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>
