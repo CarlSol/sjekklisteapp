@@ -42,7 +42,8 @@ export default function NewChecklist() {
           inspectors: [],
           completed: false
         })),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        status: 'draft'
       };
 
       await storageService.saveChecklist(newChecklist);
@@ -54,41 +55,47 @@ export default function NewChecklist() {
   };
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 4 }}>
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Ny Sjekkliste
-          </Typography>
-          <form onSubmit={handleSubmit}>
-            <TextField
+    <Container maxWidth="sm" sx={{ py: 4 }}>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Ny sjekkliste
+      </Typography>
+
+      <Paper sx={{ p: 3 }}>
+        <form onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="Solpark"
+            value={solparkName}
+            onChange={(e) => setSolparkName(e.target.value)}
+            margin="normal"
+            required
+          />
+          <TextField
+            fullWidth
+            label="Områdenummer"
+            value={areaNumber}
+            onChange={(e) => setAreaNumber(e.target.value)}
+            margin="normal"
+            required
+          />
+          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/')}
               fullWidth
-              label="Solpark Navn"
-              value={solparkName}
-              onChange={(e) => setSolparkName(e.target.value)}
-              margin="normal"
-              required
-            />
-            <TextField
-              fullWidth
-              label="Område Nummer"
-              value={areaNumber}
-              onChange={(e) => setAreaNumber(e.target.value)}
-              margin="normal"
-              required
-            />
+            >
+              Avbryt
+            </Button>
             <Button
               type="submit"
               variant="contained"
-              color="primary"
               fullWidth
-              sx={{ mt: 2 }}
             >
-              Opprett Sjekkliste
+              Opprett
             </Button>
-          </form>
-        </Paper>
-      </Box>
+          </Box>
+        </form>
+      </Paper>
     </Container>
   );
 } 

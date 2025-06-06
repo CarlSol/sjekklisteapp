@@ -1,0 +1,10 @@
+[33mda41bc5[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m Fikset TypeScript-feil: Fjernet ubrukt import
+[33m0458012[m Implementert ny funksjonalitet for sjekklisteoversikt og opprettelse
+[33m3b42d8f[m Fiks: Felles sjekkpunktliste, bildehåndtering, PDF-eksport og diverse feilrettinger
+[33mb31cf4a[m Bruker felles sjekkpunkt-liste og fikser linter-feil i ChecklistView og ChecklistForm
+[33mfd449fd[m Lagt til standard sjekkpunkter ved opprettelse av ny sjekkliste
+[33m6c6f4bb[m Oppdatert weatherConditions og generalCondition til å være strenger
+[33m203eff3[m Fikset TypeScript-feil i Home.tsx
+[33mb5467cf[m Gjenopprettet original funksjonalitet i Home.tsx
+[33m28a9850[m Fikset asynkron state-håndtering i Home.tsx
+[33mf5c48cf[m Oppdatert asynkron kode i Home.tsx
