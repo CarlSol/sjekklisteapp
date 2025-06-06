@@ -24,22 +24,20 @@ import {
   MenuItem,
   Chip,
 } from '@mui/material';
-import { PhotoCamera, Email as EmailIcon, Download as DownloadIcon, Delete as DeleteIcon, LocationOn as LocationIcon } from '@mui/icons-material';
-import { useParams } from 'react-router-dom';
+import { PhotoCamera, Email as EmailIcon, Download as DownloadIcon, Delete as DeleteIcon, LocationOn as LocationIcon, Save as SaveIcon } from '@mui/icons-material';
+import { useParams, useNavigate } from 'react-router-dom';
 import { storageService } from '../services/storageService';
-import { generatePDF, sendChecklistEmail } from '../services/emailService';
+import { generatePDF } from '../services/emailService';
 import type { Checklist, ChecklistItem } from '../types/Checklist';
 
 const ChecklistView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [selectedItem, setSelectedItem] = useState<ChecklistItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
-  const [emailAddress, setEmailAddress] = useState('');
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [editedStatus, setEditedStatus] = useState<string | null>(null);
   const [editedNotes, setEditedNotes] = useState('');
-  const [editedStatus, setEditedStatus] = useState<'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null>(null);
 
   useEffect(() => {
     const loadChecklist = async () => {
@@ -223,33 +221,43 @@ const ChecklistView: React.FC = () => {
     }
   };
 
-  const handleSendEmail = async () => {
-    if (!checklist) return;
-
-    try {
-      setIsSendingEmail(true);
-      await generatePDF(checklist);
-      const emailBody = `Vedlagt finner du sjekklisten for ${checklist.solparkName} - Område ${checklist.areaNumber}.\n\nMed vennlig hilsen,\n${checklist.inspectors?.join(', ') || ''}`;
-      await sendChecklistEmail({
-        to: emailAddress,
-        subject: 'Sjekkliste',
-        text: emailBody,
-        html: emailBody,
-        checklistItems: checklist.items || []
-      });
-      setIsEmailDialogOpen(false);
-      setEmailAddress('');
-    } catch (error) {
-      console.error('Error sending email:', error);
-      alert('Kunne ikke sende e-post. Vennligst prøv igjen.');
-    } finally {
-      setIsSendingEmail(false);
-    }
-  };
-
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('nb-NO');
+  };
+
+  const handleExportRawData = () => {
+    try {
+      if (!checklist) return;
+      
+      // Opprett en komplett kopi av sjekklista med all data
+      const exportData = {
+        ...checklist,
+        exportedAt: new Date().toISOString(),
+        version: '1.0'
+      };
+
+      // Konverter til JSON
+      const jsonString = JSON.stringify(exportData, null, 2);
+      
+      // Opprett fil for nedlasting
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sjekkliste_rådata_${checklist.solparkName}_${checklist.areaNumber}_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      console.log('Rådata eksportert successfully');
+
+    } catch (error) {
+      console.error('Feil ved eksport av rådata:', error);
+      alert('Kunne ikke eksportere rådata. Vennligst prøv igjen.');
+    }
   };
 
   if (!checklist) {
@@ -277,11 +285,11 @@ const ChecklistView: React.FC = () => {
           <Button
             variant="contained"
             color="primary"
-            startIcon={<EmailIcon />}
-            onClick={() => setIsEmailDialogOpen(true)}
+            startIcon={<SaveIcon />}
+            onClick={handleExportRawData}
             sx={{ mr: 2 }}
           >
-            Send på e-post
+            Eksporter rådata
           </Button>
           <Button
             variant="contained"
@@ -467,30 +475,6 @@ const ChecklistView: React.FC = () => {
           <Button onClick={() => setIsDialogOpen(false)}>Avbryt</Button>
           <Button onClick={handleSaveItem} variant="contained">
             Lagre
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={isEmailDialogOpen} onClose={() => setIsEmailDialogOpen(false)}>
-        <DialogTitle>Send sjekkliste på e-post</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="E-postadresse"
-            type="email"
-            fullWidth
-            value={emailAddress}
-            onChange={(e) => setEmailAddress(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIsEmailDialogOpen(false)}>Avbryt</Button>
-          <Button
-            onClick={handleSendEmail}
-            disabled={!emailAddress || isSendingEmail}
-          >
-            {isSendingEmail ? 'Sender...' : 'Send'}
           </Button>
         </DialogActions>
       </Dialog>
