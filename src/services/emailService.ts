@@ -83,58 +83,6 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
     doc.text(`Inspektør: ${checklist.inspectors?.join(', ') || 'Ikke spesifisert'}`, 14, currentY);
     currentY += 15;
     
-    // Legg til GPS-koordinater oversikt
-    const itemsWithGPS = checklist.items.filter(item => item.location);
-    if (itemsWithGPS.length > 0) {
-      doc.setFontSize(12);
-      doc.text('GPS-koordinater og kart-lenker:', 14, currentY);
-      currentY += 10;
-      
-      // Tabell med GPS-koordinater og klikkbare lenker
-      const gpsTableData = itemsWithGPS.map((item: ChecklistItem) => [
-        item.id || '',
-        item.checkPoint?.substring(0, 50) + '...' || '',
-        item.status || 'Ikke sjekket',
-        item.location ? `${item.location.latitude.toFixed(6)}, ${item.location.longitude.toFixed(6)}` : '',
-        'Åpne i Google Maps'
-      ]);
-
-      autoTable(doc, {
-        startY: currentY,
-        head: [['ID', 'Sjekkpunkt', 'Status', 'GPS-koordinater', 'Kart-lenke']],
-        body: gpsTableData,
-        theme: 'grid',
-        styles: { fontSize: 8 },
-        headStyles: { fillColor: [34, 139, 34] },
-        columnStyles: {
-          4: { textColor: [0, 0, 255] }  // Blå tekst for lenke-kolonnen
-        },
-        margin: { top: 10 },
-        didDrawCell: (data) => {
-          // Legg til klikkbare lenker i kart-lenke kolonnen
-          if (data.column.index === 4 && data.cell.section === 'body') {
-            const rowIndex = data.row.index;
-            if (rowIndex < itemsWithGPS.length) {
-              const item = itemsWithGPS[rowIndex];
-              if (item && item.location) {
-                const googleMapsUrl = `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}`;
-                
-                doc.link(
-                  data.cell.x,
-                  data.cell.y,
-                  data.cell.width,
-                  data.cell.height,
-                  { url: googleMapsUrl }
-                );
-              }
-            }
-          }
-        }
-      });
-
-      currentY = (doc as any).lastAutoTable.finalY + 15;
-    }
-    
     // Grupper sjekkpunkter etter kategori
     const groupedItems = checklist.items.reduce((acc, item) => {
       if (!acc[item.category]) {
@@ -164,12 +112,12 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
         item.status || 'Ikke sjekket',
         item.notes || '',
         item.timestamp ? new Date(item.timestamp).toLocaleString('nb-NO') : '',
-        item.location ? 'GPS-lenke' : ''
+        item.location ? 'Kart' : ''
       ]);
 
       autoTable(doc, {
         startY: currentY,
-        head: [['ID', 'Sjekkpunkt', 'Status', 'Notater', 'Tidspunkt', 'Kart']],
+        head: [['ID', 'Sjekkpunkt', 'Status', 'Notater', 'Tidspunkt', 'GPS']],
         body: tableData,
         theme: 'grid',
         styles: { fontSize: 8 },
@@ -213,19 +161,7 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
 
           doc.setFontSize(10);
           doc.text(`Bilder for ${item.id}:`, 14, currentY);
-          
-          // Legg til GPS-lenke for sjekkpunktet ved bildene
-          if (item.location) {
-            const gpsText = `GPS: ${item.location.latitude.toFixed(6)}, ${item.location.longitude.toFixed(6)}`;
-            const googleMapsUrl = `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}&zoom=18`;
-            
-            doc.setTextColor(0, 0, 255);  // Blå tekst
-            doc.textWithLink(gpsText, 14, currentY + 10, { url: googleMapsUrl });
-            doc.setTextColor(0, 0, 0);   // Tilbake til svart tekst
-            currentY += 15;
-          } else {
-            currentY += 5;
-          }
+          currentY += 10;
 
           // Behandle bilder (kan være med eller uten GPS-metadata)
           for (const imageRef of item.images) {
@@ -249,34 +185,41 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
               const imgHeight = (img.height * imgWidth) / img.width;
 
               // Sjekk om vi trenger ny side
-              if (currentY + imgHeight + 30 > doc.internal.pageSize.height - 20) {
+              if (currentY + imgHeight + 40 > doc.internal.pageSize.height - 20) {
                 doc.addPage();
                 currentY = 20;
               }
 
+              // Legg til bildets tittel med koordinater og tid
+              let titleText = 'Bilde';
+              if (imageLocation && imageTimestamp) {
+                titleText = `GPS: ${imageLocation.latitude.toFixed(6)}, ${imageLocation.longitude.toFixed(6)} - ${new Date(imageTimestamp).toLocaleString('nb-NO')}`;
+              } else if (imageLocation) {
+                titleText = `GPS: ${imageLocation.latitude.toFixed(6)}, ${imageLocation.longitude.toFixed(6)}`;
+              } else if (imageTimestamp) {
+                titleText = `Tidspunkt: ${new Date(imageTimestamp).toLocaleString('nb-NO')}`;
+              }
+
+              doc.setFontSize(9);
+              doc.text(titleText, 14, currentY);
+              currentY += 7;
+
               doc.addImage(img, 'JPEG', 14, currentY, imgWidth, imgHeight);
+              currentY += imgHeight + 5;
               
-              // Legg til metadata under bildet
-              let metadataY = currentY + imgHeight + 5;
-              
+              // Legg til Google Maps lenke rett under bildet
               if (imageLocation) {
-                const imageGpsText = `Bilde GPS: ${imageLocation.latitude.toFixed(6)}, ${imageLocation.longitude.toFixed(6)}`;
                 const imageGpsUrl = `https://www.google.com/maps?q=${imageLocation.latitude},${imageLocation.longitude}&zoom=20`;
                 
                 doc.setFontSize(8);
                 doc.setTextColor(0, 0, 255);
-                doc.textWithLink(imageGpsText, 14, metadataY, { url: imageGpsUrl });
+                doc.textWithLink('📍 Åpne i Google Maps', 14, currentY, { url: imageGpsUrl });
                 doc.setTextColor(0, 0, 0);
-                metadataY += 8;
-              }
-              
-              if (imageTimestamp) {
-                doc.setFontSize(8);
-                doc.text(`Tidspunkt: ${new Date(imageTimestamp).toLocaleString('nb-NO')}`, 14, metadataY);
-                metadataY += 8;
+                currentY += 10;
+              } else {
+                currentY += 5;
               }
 
-              currentY = metadataY + 5;
             } catch (error) {
               console.error('Feil ved lasting av bilde:', error);
               doc.setFontSize(8);
@@ -284,6 +227,9 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
               currentY += 10;
             }
           }
+
+          // Ekstra space etter bilder
+          currentY += 5;
         }
       }
 
