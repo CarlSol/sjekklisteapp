@@ -113,17 +113,20 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
         didDrawCell: (data) => {
           // Legg til klikkbare lenker i kart-lenke kolonnen
           if (data.column.index === 4 && data.cell.section === 'body') {
-            const item = itemsWithGPS[data.row.index];
-            if (item.location) {
-              const googleMapsUrl = `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}`;
-              
-              doc.link(
-                data.cell.x,
-                data.cell.y,
-                data.cell.width,
-                data.cell.height,
-                { url: googleMapsUrl }
-              );
+            const rowIndex = data.row.index;
+            if (rowIndex < itemsWithGPS.length) {
+              const item = itemsWithGPS[rowIndex];
+              if (item && item.location) {
+                const googleMapsUrl = `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}`;
+                
+                doc.link(
+                  data.cell.x,
+                  data.cell.y,
+                  data.cell.width,
+                  data.cell.height,
+                  { url: googleMapsUrl }
+                );
+              }
             }
           }
         }
@@ -178,17 +181,20 @@ export const generatePDF = async (checklist: Checklist): Promise<Blob> => {
         didDrawCell: (data) => {
           // Legg til klikkbare lenker for sjekkpunkter med GPS-koordinater
           if (data.column.index === 5 && data.cell.section === 'body') {
-            const item = items[data.row.index];
-            if (item.location) {
-              const googleMapsUrl = `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}&zoom=18`;
-              
-              doc.link(
-                data.cell.x,
-                data.cell.y,
-                data.cell.width,
-                data.cell.height,
-                { url: googleMapsUrl }
-              );
+            const rowIndex = data.row.index;
+            if (rowIndex < items.length) {
+              const item = items[rowIndex];
+              if (item && item.location) {
+                const googleMapsUrl = `https://www.google.com/maps?q=${item.location.latitude},${item.location.longitude}&zoom=18`;
+                
+                doc.link(
+                  data.cell.x,
+                  data.cell.y,
+                  data.cell.width,
+                  data.cell.height,
+                  { url: googleMapsUrl }
+                );
+              }
             }
           }
         }
