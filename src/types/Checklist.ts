@@ -13,7 +13,7 @@ export interface ChecklistItem {
   timestamp: string;
   inspectors: string[];
   frequency: string;
-  status: 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null;
+  status: 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | 'Ja' | 'Nei' | 'Behov ikke funnet' | null;
 }
 
 export interface Checklist {

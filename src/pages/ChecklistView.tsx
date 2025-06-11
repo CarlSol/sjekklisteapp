@@ -35,7 +35,7 @@ const ChecklistView: React.FC = () => {
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [selectedItem, setSelectedItem] = useState<ChecklistItem | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editedStatus, setEditedStatus] = useState<'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null>(null);
+  const [editedStatus, setEditedStatus] = useState<'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | 'Ja' | 'Nei' | 'Behov ikke funnet' | null>(null);
   const [editedNotes, setEditedNotes] = useState('');
 
   useEffect(() => {
@@ -53,7 +53,7 @@ const ChecklistView: React.FC = () => {
   const handleItemClick = (item: ChecklistItem) => {
     setSelectedItem(item);
     setEditedNotes(item.notes || '');
-    setEditedStatus(item.status as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null);
+    setEditedStatus(item.status as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | 'Ja' | 'Nei' | 'Behov ikke funnet' | null);
     setIsDialogOpen(true);
   };
 
@@ -100,7 +100,7 @@ const ChecklistView: React.FC = () => {
         updatedChecklist.items[itemIndex] = {
           ...updatedChecklist.items[itemIndex],
           notes: editedNotes,
-          status: editedStatus as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null,
+          status: editedStatus as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | 'Ja' | 'Nei' | 'Behov ikke funnet' | null,
           timestamp: new Date().toISOString(),
           location: location,
           completed: editedStatus !== null
@@ -127,7 +127,7 @@ const ChecklistView: React.FC = () => {
           updatedChecklist.items[itemIndex] = {
             ...updatedChecklist.items[itemIndex],
             notes: editedNotes,
-            status: editedStatus as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | null,
+            status: editedStatus as 'OK' | 'Avvik' | 'Anbefalt tiltak' | 'Ikke aktuelt' | 'Ja' | 'Nei' | 'Behov ikke funnet' | null,
             timestamp: new Date().toISOString(),
             completed: editedStatus !== null
           };
@@ -242,8 +242,11 @@ const ChecklistView: React.FC = () => {
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case 'OK': return 'success';
+      case 'Ja': return 'success';
       case 'Avvik': return 'error';
+      case 'Nei': return 'error';
       case 'Anbefalt tiltak': return 'warning';
+      case 'Behov ikke funnet': return 'info';
       case 'Ikke aktuelt': return 'info';
       default: return 'default';
     }
@@ -581,8 +584,11 @@ const ChecklistView: React.FC = () => {
                 >
                   <MenuItem value="">Ikke valgt</MenuItem>
                   <MenuItem value="OK">OK</MenuItem>
+                  <MenuItem value="Ja">Ja</MenuItem>
                   <MenuItem value="Avvik">Avvik</MenuItem>
+                  <MenuItem value="Nei">Nei</MenuItem>
                   <MenuItem value="Anbefalt tiltak">Anbefalt tiltak</MenuItem>
+                  <MenuItem value="Behov ikke funnet">Behov ikke funnet</MenuItem>
                   <MenuItem value="Ikke aktuelt">Ikke aktuelt</MenuItem>
                 </Select>
               </FormControl>
